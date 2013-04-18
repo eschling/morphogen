@@ -1,0 +1,4 @@
+scikit-learn
+dawg_python
+pymorphy2
+pymorphy2-dicts
