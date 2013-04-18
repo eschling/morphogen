@@ -43,6 +43,8 @@ class Tagger:
             assert word == w
             if lemma == '<unknown>':
                 lemma = self.guess(word)
+            elif not lemma:
+                lemma = '<null>'
             yield Analysis(word, lemma, tag)
 
 if __name__ == '__main__':
