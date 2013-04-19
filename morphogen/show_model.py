@@ -9,15 +9,15 @@ def main():
 
     with open(args.model) as f:
         m = cPickle.load(f)
-        vectorizer = m['vectorizer']
-        model = m['model']
+    
+    for category, (vectorizer, model) in m.iteritems():
+        fnames = vectorizer.get_feature_names()
 
-    fnames = vectorizer.get_feature_names()
-
-    for cls, weights in zip(model.classes_[:-1], model.coef_):
-        print cls
-        top = heapq.nlargest(10, zip(weights, fnames))
-        print(' '.join(u'{1}={0}'.format(*wf) for wf in top).encode('utf8'))
+        for cls, weights in zip(model.classes_[:-1], model.coef_):
+            print('{}{}: '.format(category, cls))
+            top = heapq.nlargest(10, zip(weights, fnames))
+            print(' '.join(u'{1}={0}'.format(*wf) for wf in top).encode('utf8'))
+        print '='*100
 
 if __name__ == '__main__':
     main()

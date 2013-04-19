@@ -2,12 +2,14 @@ import sys
 import argparse
 import cPickle
 import logging
+from collections import defaultdict
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 import analyzer
 import basic_features
 
 def read_sentences(stream):
+    """Read source ||| target ||| alignments from stream"""
     for line in stream:
         src, tgt, als = line.decode('utf8')[:-1].split(' ||| ')
         alignments = [(float(ij[0]), float(ij[1])) for ij in
@@ -15,6 +17,7 @@ def read_sentences(stream):
         yield src.split(), tgt.split(), alignments
 
 def annotate_sentences(tagger, sentences):
+    """Annotate target with morphological tags"""
     for source, target, alignments in sentences:
         try:
             analyzed_target = list(tagger.tag(target))
@@ -24,9 +27,11 @@ def annotate_sentences(tagger, sentences):
         yield source, analyzed_target, alignments
 
 def read_annotated(stream):
+    """Read directly annotated data from stream in the format produce by pre-tag.py:
+    source ||| target ||| target lemmas ||| target tags ||| alignment"""
     for line in stream:
         src, tgt, tgt_lem, tgt_ana, als = line.decode('utf8')[:-1].split(' ||| ')
-        alignments = [(float(ij[0]), float(ij[1])) for ij in
+        alignments = [(int(ij[0]), int(ij[1])) for ij in
             (point.split('-') for point in als.split())]
         tgt = tgt.split()
         tgt_lem = tgt_lem.split()
@@ -37,14 +42,21 @@ def read_annotated(stream):
         analyzed_target = [analyzer.Analysis(*t) for t in zip(tgt, tgt_lem, tgt_ana)]
         yield src.split(), analyzed_target, alignments
 
-FEATURES = [basic_features.words]
+# List of features function to use for extraction
+FEATURES = [basic_features.bow]
+# List of POS categories to extract training data for
+EXTRACTED_TAGS = 'NVARM'
 
 def extract_instances(source, analyses, alignment):
+    """Extract (category, feature, tag) training instances for a sentence pair"""
     for j, analysis in enumerate(analyses):
-        if analysis.tag[0] in ('-', ',', 'SENT', 'X'): continue
+        if analysis.tag[0] not in EXTRACTED_TAGS: continue
+        word_alignments = [i for (i, k) in alignment if k == j]
+        if len(word_alignments) != 1: continue # Extract only one-to-one alignments
+        (i,) = word_alignments
         features = dict((fname, fval) for ff in FEATURES
-                for fname, fval in ff(source, j, analysis, alignment))
-        yield features, analysis.tag
+                for fname, fval in ff(source, analysis, i))
+        yield analysis.tag[0], features, analysis.tag[1:]
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -61,24 +73,30 @@ def main():
         data = read_annotated(sys.stdin)
 
     logging.info('Extracting features for training data')
-    training_features = []
-    training_outputs = []
-    for source, analyzed_target, alignment in data:
-        for features, output in extract_instances(source, analyzed_target, alignment):
-            training_features.append(features)
-            training_outputs.append(output)
+    training_features = defaultdict(list)
+    training_outputs = defaultdict(list)
+    for source, target, alignment in data:
+        for category, features, output in extract_instances(source, target, alignment):
+            training_features[category].append(features)
+            training_outputs[category].append(output)
 
-    logging.info('Converting into sparse matrix')
-    vectorizer = DictVectorizer()
-    X = vectorizer.fit_transform(training_features)
-    logging.info('Training data size: %d instances x %d features', *X.shape)
+    models = {}
+    for category in training_features:
+        logging.info('Training model for category: %s', category)
+        logging.info('Converting data into sparse matrix')
+        vectorizer = DictVectorizer()
+        X = vectorizer.fit_transform(training_features[category])
+        y = training_outputs[category]
+        logging.info('Training data size: %d instances x %d features', *X.shape)
 
-    logging.info('Fitting model')
-    model = LogisticRegression(C=10)
-    model.fit(X, training_outputs)
+        logging.info('Fitting model')
+        model = LogisticRegression(C=10)
+        model.fit(X, y)
+
+        models[category] = (vectorizer, model)
 
     with open(args.model, 'w') as f:
-        cPickle.dump({'vectorizer': vectorizer, 'model': model}, f)
+        cPickle.dump(models, f)
 
 if __name__ == '__main__':
     main()
