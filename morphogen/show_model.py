@@ -14,7 +14,7 @@ def main():
         fnames = vectorizer.get_feature_names()
 
         for cls, weights in zip(model.classes_[:-1], model.coef_):
-            print('{}{}: '.format(category, cls))
+            print '{}{}:'.format(category, cls),
             top = heapq.nlargest(10, zip(weights, fnames))
             print(' '.join(u'{1}={0}'.format(*wf) for wf in top).encode('utf8'))
         print '='*100

@@ -55,7 +55,7 @@ def extract_instances(source, analyses, alignment):
         if len(word_alignments) != 1: continue # Extract only one-to-one alignments
         (i,) = word_alignments
         features = dict((fname, fval) for ff in FEATURES
-                for fname, fval in ff(source, analysis, i))
+                for fname, fval in ff(source, analysis.lemma, i))
         yield analysis.tag[0], features, analysis.tag[1:]
 
 def main():
@@ -90,13 +90,13 @@ def main():
         logging.info('Training data size: %d instances x %d features', *X.shape)
 
         logging.info('Fitting model')
-        model = LogisticRegression(C=10)
+        model = LogisticRegression(C=0.1)
         model.fit(X, y)
 
         models[category] = (vectorizer, model)
 
     with open(args.model, 'w') as f:
-        cPickle.dump(models, f)
+        cPickle.dump(models, f, protocol=-1)
 
 if __name__ == '__main__':
     main()
