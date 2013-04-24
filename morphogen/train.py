@@ -2,75 +2,72 @@ import sys
 import argparse
 import cPickle
 import logging
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
-import analyzer
-import basic_features
+import config
+
+AnnotatedToken = namedtuple('AnnotatedToken', 'token, pos, parent, dependency, cluster')
 
 def read_sentences(stream):
-    """Read source ||| target ||| alignments from stream"""
+    """Read annotated sentences in the format:
+    EN ||| EN POS ||| EN dep ||| EN clus ||| RU ||| RU lemma ||| RU tag ||| alignment"""
     for line in stream:
-        src, tgt, als = line.decode('utf8')[:-1].split(' ||| ')
-        alignments = [(float(ij[0]), float(ij[1])) for ij in
-            (point.split('-') for point in als.split())]
-        yield src.split(), tgt.split(), alignments
+        fields = line.decode('utf8')[:-1].split(' ||| ')
+        src, src_pos, src_dep, src_clus, tgt, tgt_lem, tgt_tag, als = fields
 
-def annotate_sentences(tagger, sentences):
-    """Annotate target with morphological tags"""
-    for source, target, alignments in sentences:
-        try:
-            analyzed_target = list(tagger.tag(target))
-        except analyzer.AnalysisError as e:
-            logging.error('Tagging failed for "%s": %s', ' '.join(target), e)
-            continue
-        yield source, analyzed_target, alignments
-
-def read_annotated(stream):
-    """Read directly annotated data from stream in the format produce by pre-tag.py:
-    source ||| target ||| target lemmas ||| target tags ||| alignment"""
-    for line in stream:
-        src, tgt, tgt_lem, tgt_ana, als = line.decode('utf8')[:-1].split(' ||| ')
-        alignments = [(int(ij[0]), int(ij[1])) for ij in
-            (point.split('-') for point in als.split())]
+        # Read target
         tgt = tgt.split()
         tgt_lem = tgt_lem.split()
-        tgt_ana = tgt_ana.split()
-        if not (len(tgt) == len(tgt_lem) == len(tgt_ana)):
-            logging.error('** Bad annotation for "%s"', ' '.join(tgt))
+        tgt_tag = tgt_tag.split()
+        # check
+        if not tgt_lem:
+            logging.debug('Skip empty analysis for sentence: %s', ' '.join(tgt))
             continue
-        analyzed_target = [analyzer.Analysis(*t) for t in zip(tgt, tgt_lem, tgt_ana)]
-        yield src.split(), analyzed_target, alignments
+        if not len(tgt) == len(tgt_lem) == len(tgt_tag):
+            logging.error('Bad annotation for "%s"', ' '.join(tgt))
+            continue
+        tgt_tokens = zip(tgt, tgt_lem, tgt_tag)
 
-# List of features function to use for extraction
-FEATURES = [basic_features.bow]
-# List of POS categories to extract training data for
-EXTRACTED_TAGS = 'NVARM'
+        # Read source
+        src = src.split()
+        src_pos = src_pos.split()
+        src_parents, src_dtypes = zip(*[(int(parent), typ) for parent, typ in 
+            (dep.split('-') for dep in src_dep.split())])
+        src_clus = src_clus.split()
+        src_tokens = [AnnotatedToken(*info) for info in
+                zip(src, src_pos, src_parents, src_dtypes, src_clus)]
 
-def extract_instances(source, analyses, alignment):
-    """Extract (category, feature, tag) training instances for a sentence pair"""
-    for j, analysis in enumerate(analyses):
-        if analysis.tag[0] not in EXTRACTED_TAGS: continue
-        word_alignments = [i for (i, k) in alignment if k == j]
+        if not len(src) == len(src_pos) == len(src_parents) == len(src_dtypes) == len(src_clus):
+            logging.error('Bad tag/parse for "%s" (%d/%d/%d/%d/%d)', ' '.join(src),
+                    len(src), len(src_pos), len(src_parents), len(src_dtypes), len(src_clus))
+            continue
+
+        # Read alignment (tgt - src) [ru - en]
+        alignments = [(int(i), int(j)) for i, j in
+            (point.split('-') for point in als.split())]
+
+        yield src_tokens, tgt_tokens, alignments
+
+def extract_instances(source, target, alignment):
+    """Extract (category, features, tag) training instances for a sentence pair"""
+    for i, (token, lemma, tag) in enumerate(target):
+        if tag[0] not in config.EXTRACTED_TAGS: continue
+        word_alignments = [j for (k, j) in alignment if k == i] # tgt == i - src
         if len(word_alignments) != 1: continue # Extract only one-to-one alignments
-        (i,) = word_alignments
-        features = dict((fname, fval) for ff in FEATURES
-                for fname, fval in ff(source, analysis.lemma, i))
-        yield analysis.tag[0], features, analysis.tag[1:]
+        (j,) = word_alignments # src
+        features = dict((fname, fval) for ff in config.FEATURES
+                for fname, fval in ff(source, lemma, j))
+        yield tag[0], features, tag[1:]
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser(description='Train morphology generation model')
     parser.add_argument('model', help='output file for trained model')
-    parser.add_argument('--analyze', help='run morphological tagger')
     args = parser.parse_args()
 
-    if args.analyze:
-        tagger = analyzer.Tagger()
-        data = annotate_sentences(tagger, read_sentences(sys.stdin))
-    else:
-        data = read_annotated(sys.stdin)
+    data = read_sentences(sys.stdin)
 
     logging.info('Extracting features for training data')
     training_features = defaultdict(list)
@@ -88,9 +85,10 @@ def main():
         X = vectorizer.fit_transform(training_features[category])
         y = training_outputs[category]
         logging.info('Training data size: %d instances x %d features', *X.shape)
+        logging.info('Number of predicted tags: %d', len(set(y)))
 
         logging.info('Fitting model')
-        model = LogisticRegression(C=0.1)
+        model = LogisticRegression(C=0.01)
         model.fit(X, y)
 
         models[category] = (vectorizer, model)
