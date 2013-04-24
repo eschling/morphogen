@@ -13,3 +13,6 @@ Where:
 - `source` is a list of AnnotatedToken(token, pos, parent, dependency, cluster)
 - target_lemma is the lemma of the focus target word
 - alignment is the alignment point of the focus target word in the source
+
+Prediction format:
+EN ||| EN POS ||| EN dep ||| EN clus ||| RU lemma (1) ||| RU category (1) ||| alignment (1)

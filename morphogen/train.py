@@ -51,7 +51,7 @@ def read_sentences(stream):
 
 def extract_instances(source, target, alignment):
     """Extract (category, features, tag) training instances for a sentence pair"""
-    for i, (token, lemma, tag) in enumerate(target):
+    for i, (_, lemma, tag) in enumerate(target):
         if tag[0] not in config.EXTRACTED_TAGS: continue
         word_alignments = [j for (k, j) in alignment if k == i] # tgt == i - src
         if len(word_alignments) != 1: continue # Extract only one-to-one alignments
@@ -67,12 +67,10 @@ def main():
     parser.add_argument('model', help='output file for trained model')
     args = parser.parse_args()
 
-    data = read_sentences(sys.stdin)
-
     logging.info('Extracting features for training data')
     training_features = defaultdict(list)
     training_outputs = defaultdict(list)
-    for source, target, alignment in data:
+    for source, target, alignment in read_sentences(sys.stdin):
         for category, features, output in extract_instances(source, target, alignment):
             training_features[category].append(features)
             training_outputs[category].append(output)
