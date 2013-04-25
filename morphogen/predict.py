@@ -2,8 +2,8 @@ import sys
 import argparse
 import logging
 import cPickle
-from train import read_sentences
 import config
+from train import read_sentences
 
 def extract_instances(source, target, alignment):
     """Extract (category, features, tag) training instances for a sentence pair"""
@@ -19,7 +19,7 @@ def extract_instances(source, target, alignment):
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    parser = argparse.ArgumentParser(description='Show trained model')
+    parser = argparse.ArgumentParser(description='Predict using trained model')
     parser.add_argument('model', help='trained model')
     parser.add_argument('rev_map', help='reverse inflection map')
     args = parser.parse_args()

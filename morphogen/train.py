@@ -2,8 +2,7 @@ import sys
 import argparse
 import cPickle
 import logging
-import multiprocessing as mp
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 import config
@@ -50,58 +49,51 @@ def read_sentences(stream):
 
         yield src_tokens, tgt_tokens, alignments
 
-def extract_instances(source, target, alignment):
-    """Extract (category, features, tag) training instances for a sentence pair"""
+def extract_instances(category, source, target, alignment):
+    """Extract (features, tag) training instances for a sentence pair"""
     for i, (_, lemma, tag) in enumerate(target):
-        if tag[0] not in config.EXTRACTED_TAGS: continue
+        if tag[0] != category: continue
         word_alignments = [j for (k, j) in alignment if k == i] # tgt == i - src
         if len(word_alignments) != 1: continue # Extract only one-to-one alignments
         (j,) = word_alignments # src
         features = dict((fname, fval) for ff in config.FEATURES
                 for fname, fval in ff(source, lemma, j))
-        yield tag[0], features, tag[1:]
-
-def train_model(data):
-    category, X, y = data
-    logging.info('Training model for category: %s', category)
-    logging.info('Converting data into sparse matrix')
-
-    vectorizer = DictVectorizer()
-    X = vectorizer.fit_transform(X)
-
-    logging.info('Training data size: %d instances x %d features', *X.shape)
-    logging.info('Number of predicted tags: %d', len(set(y)))
-
-    model = LogisticRegression(C=0.01)
-    model.fit(X, y)
-
-    logging.info('Model for category %s trained', category)
-    return category, vectorizer, model
+        yield features, tag[1:]
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser(description='Train morphology generation model')
+    parser.add_argument('category', help='Russian word category to (R/V/A/N/M)')
     parser.add_argument('model', help='output file for trained model')
+    parser.add_argument('--penalty', help='regularization penalty', type=float, default=0.001)
     args = parser.parse_args()
 
-    logging.info('Extracting features for training data')
-    training_features = defaultdict(list)
-    training_outputs = defaultdict(list)
-    for source, target, alignment in read_sentences(sys.stdin):
-        for category, features, output in extract_instances(source, target, alignment):
-            training_features[category].append(features)
-            training_outputs[category].append(output)
+    assert len(args.category) == 1
+    with open(args.model, 'w') as f:
+        f.write('write test / training...')
 
-    models = {}
-    pool = mp.Pool(processes=len(training_features))
-    training_data = [(category, training_features[category], training_outputs[category])
-            for category in training_features]
-    for category, vectorizer, model in pool.imap(train_model, training_data):
-        models[category] = (vectorizer, model)
+    logging.info('Extracting features for training data')
+
+    training_features = []
+    training_outputs = []
+    for source, target, alignment in read_sentences(sys.stdin):
+        for features, output in extract_instances(args.category, source, target, alignment):
+            training_features.append(features)
+            training_outputs.append(output)
+
+    vectorizer = DictVectorizer()
+    X = vectorizer.fit_transform(training_features)
+    y = training_outputs
+
+    logging.info('Training data size: %d instances x %d features', *X.shape)
+    logging.info('Training model for category: %s (%d tags)', args.category, len(set(y)))
+
+    model = LogisticRegression(C=args.penalty)
+    model.fit(X, y)
 
     with open(args.model, 'w') as f:
-        cPickle.dump(models, f, protocol=-1)
+        cPickle.dump((args.category, vectorizer, model), f, protocol=-1)
 
 if __name__ == '__main__':
     main()
