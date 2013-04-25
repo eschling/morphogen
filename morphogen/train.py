@@ -2,6 +2,7 @@ import sys
 import argparse
 import cPickle
 import logging
+import multiprocessing as mp
 from collections import defaultdict, namedtuple
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -60,6 +61,23 @@ def extract_instances(source, target, alignment):
                 for fname, fval in ff(source, lemma, j))
         yield tag[0], features, tag[1:]
 
+def train_model(data):
+    category, X, y = data
+    logging.info('Training model for category: %s', category)
+    logging.info('Converting data into sparse matrix')
+
+    vectorizer = DictVectorizer()
+    X = vectorizer.fit_transform(X)
+
+    logging.info('Training data size: %d instances x %d features', *X.shape)
+    logging.info('Number of predicted tags: %d', len(set(y)))
+
+    model = LogisticRegression(C=0.01)
+    model.fit(X, y)
+
+    logging.info('Model for category %s trained', category)
+    return category, vectorizer, model
+
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -76,19 +94,10 @@ def main():
             training_outputs[category].append(output)
 
     models = {}
-    for category in training_features:
-        logging.info('Training model for category: %s', category)
-        logging.info('Converting data into sparse matrix')
-        vectorizer = DictVectorizer()
-        X = vectorizer.fit_transform(training_features[category])
-        y = training_outputs[category]
-        logging.info('Training data size: %d instances x %d features', *X.shape)
-        logging.info('Number of predicted tags: %d', len(set(y)))
-
-        logging.info('Fitting model')
-        model = LogisticRegression(C=0.01)
-        model.fit(X, y)
-
+    pool = mp.Pool(processes=len(training_features))
+    training_data = [(category, training_features[category], training_outputs[category])
+            for category in training_features]
+    for category, vectorizer, model in pool.imap(train_model, training_data):
         models[category] = (vectorizer, model)
 
     with open(args.model, 'w') as f:
