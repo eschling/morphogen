@@ -19,19 +19,23 @@ def extract_instances(source, target, alignment):
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    parser = argparse.ArgumentParser(description='Predict using trained model')
-    parser.add_argument('model', help='trained model')
+    parser = argparse.ArgumentParser(description='Predict using trained models')
     parser.add_argument('rev_map', help='reverse inflection map')
+    parser.add_argument('models', nargs='+', help='trained models')
     args = parser.parse_args()
-
-    logging.info('Loading inflection prediction model')
-    with open(args.model) as f:
-        m = cPickle.load(f)
-    logging.info('Loaded model with %d categories', len(m))
 
     logging.info('Loading reverse inflection map')
     with open(args.rev_map) as f:
         rev_map = cPickle.load(f)
+
+    models = {}
+    logging.info('Loading inflection prediction models')
+    for fn in args.models:
+        with open(fn) as f:
+            category, v, m = cPickle.load(f)
+            models[category] = v, m
+
+    logging.info('Loaded models for %d categories', len(models))
 
     stats = {cat: [0, 0] for cat in config.EXTRACTED_TAGS}
 
@@ -45,7 +49,7 @@ def main():
                 print(u'Expected: {} ({}) not found'.format(gold_inflection,
                     gold_tag).encode('utf8'))
                 continue
-            vectorizer, model = m[category]
+            vectorizer, model = models[category]
             fvector = vectorizer.transform(features)
             predictions = dict(zip(model.classes_, model.predict_proba(fvector)[0]))
             scored_inflections = ((predictions.get(tag, 0), tag, inflection)
