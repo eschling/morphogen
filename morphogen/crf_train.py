@@ -1,7 +1,7 @@
 import sys, os, io
 import argparse, logging
 import uuid
-import cPickle, gzip
+import cPickle
 import config
 import tagset
 from train import read_sentences
@@ -17,9 +17,9 @@ def extract_instances(category, source, target, alignment):
                 for fname, fval in ff(source, lemma, j))
         yield (token, lemma, tag), features
 
-def get_attributes(tag):
-    category = tagset.categories[tag[0]]
-    for i, attr in enumerate(tag[1:], 1):
+def get_attributes(cat, attrs):
+    category = tagset.categories[cat]
+    for i, attr in enumerate(attrs, 1):
         if attr != '-':
             yield tagset.attributes[category, i]+'_'+attr
 
@@ -28,6 +28,25 @@ class Vocabulary(dict):
         if feature not in self:
             self[feature] = len(self)
         return self[feature]
+
+    def expand_features(self, category, attributes, features):
+        for morph in get_attributes(category, attributes):
+            for fname, fval in features.iteritems():
+                fid = self.convert(u'{}_{}'.format(morph, fname))
+                yield 'F{}={}'.format(fid, fval)
+
+    def make_rule(self, lemma, category, attributes, features):
+        src = lemma+'_'+category
+        tgt = ' '.join(get_attributes(category, attributes))
+        feat = ' '.join(self.expand_features(category, attributes, features))
+        return (u'[S] ||| {} ||| {} {} ||| {}\n'.format(src, category, tgt, feat))
+
+import subprocess as sp
+def too_much_mem():
+    p = sp.Popen(('df', '/dev/shm'), stdout=sp.PIPE)
+    out, _  = p.communicate()
+    percent = float(out.split()[9]) / float(out.split()[8])
+    return (percent > 0.9)
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -38,57 +57,52 @@ def main():
     parser.add_argument('output', help='training output path')
     args = parser.parse_args()
 
+    category = args.category
+
     logging.info('Loading reverse inflection map')
     with open(args.rev_map) as f:
         rev_map = cPickle.load(f)
 
+    # Create training data paths
     if not os.path.exists(args.output):
         os.mkdir(args.output)
-
-    category = args.category
-
-    clf_path = os.path.join(args.output, 'category_'+category)
-    os.mkdir(clf_path)
-    grammar_path = os.path.join(clf_path, 'grammars')
+    grammar_path = os.path.join(args.output, 'grammars')
     os.mkdir(grammar_path)
-    sgm = io.open(os.path.join(clf_path, 'train.sgm'), 'w', encoding='utf8')
+    sgm = io.open(os.path.join(args.output, 'train.sgm'), 'w', encoding='utf8')
 
     fvoc = Vocabulary()
-
-    def expand_features(attr, features):
-        for morph in get_attributes(category+attr):
-            for fname, fval in features.iteritems():
-                fid = fvoc.convert(u'{}_{}'.format(morph, fname))
-                yield 'F{}={}'.format(fid, fval)
 
     n_sentences = 0
     logging.info('Generating grammars')
     for source, target, alignment in read_sentences(sys.stdin):
         n_sentences += 1
-        if n_sentences % 100 == 0:
-            sys.stderr.write('.')
+        if n_sentences % 1000 == 0:
+            if too_much_mem():
+                logging.info('Running out of memory')
+                break
         for word, features in extract_instances(category, source, target, alignment):
             inflection, lemma, tag = word
             category = tag[0]
-            attributes = tag[1:]
+            ref_attributes = tag[1:]
             possible_inflections = rev_map.get((lemma, category), [])
-            if (attributes, inflection) not in possible_inflections:
-                logging.debug('Skip: %s (%s)', inflection, attributes)
+            if (ref_attributes, inflection) not in possible_inflections:
+                logging.debug('Skip: %s (%s)', inflection, ref_attributes)
                 continue
-            grammar_name = os.path.join(grammar_path, uuid.uuid1().hex+'.gz')
+            # Write grammar
+            grammar_name = os.path.join(grammar_path, uuid.uuid1().hex)
+            with open(grammar_name, 'w') as grammar:
+                for attributes, _ in possible_inflections:
+                    rule = fvoc.make_rule(lemma, category, attributes, features)
+                    grammar.write(rule.encode('utf8'))
+            # Write src / ref
             src = lemma+'_'+category
-            with gzip.open(grammar_name, 'w') as grammar:
-                for (attr, _) in possible_inflections:
-                    tgt = ' '.join(get_attributes(category+attr))
-                    feat = ' '.join(expand_features(attr, features))
-                    grammar.write(u'[S] ||| {} ||| {} {} ||| {}\n'.format(
-                        src, category, tgt, feat).encode('utf8'))
-            ref = ' '.join(get_attributes(tag))
+            ref = ' '.join(get_attributes(category, ref_attributes))
             sgm.write(u'<seg grammar="{}"> {} ||| {} {} </seg>\n'.format(
                 os.path.abspath(grammar_name), src, category, ref))
 
+    logging.info('Processed %d sentences', n_sentences)
     logging.info('Saving weights')
-    ff_path = os.path.join(args.output, 'category_'+category, 'weights.ini')
+    ff_path = os.path.join(args.output, 'weights.ini')
     with io.open(ff_path, 'w', encoding='utf8') as f:
         for fname, fid in fvoc.iteritems():
             f.write(u'# {}\n'.format(fname))
