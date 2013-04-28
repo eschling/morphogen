@@ -4,7 +4,7 @@ import uuid
 import cPickle
 import config
 import tagset
-from train import read_sentences
+from common import read_sentences
 
 def extract_instances(category, source, target, alignment):
     """Extract (category, features, tag) training instances for a sentence pair"""

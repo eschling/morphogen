@@ -3,7 +3,7 @@ import argparse
 import logging
 import cPickle
 import config
-from train import read_sentences
+from common import read_sentences
 
 def extract_instances(source, target, alignment):
     """Extract (category, features, tag) training instances for a sentence pair"""

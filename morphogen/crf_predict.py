@@ -2,7 +2,7 @@ import sys
 import argparse, logging
 import cPickle, gzip
 import config
-from train import read_sentences
+from common import read_sentences
 from crf_train import get_attributes
 from predict import extract_instances
 
