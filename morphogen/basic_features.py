@@ -21,7 +21,7 @@ def basic_dependency(source, target_lemma, alignment):
     prev_parents = set()
     while deptype != 'ROOT':
         gen += 1
-        if gen > 10:
+        if gen > 1:
             break # safeguard against insane dep trees
         prev_parents.add(parent)
 
