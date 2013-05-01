@@ -13,15 +13,29 @@ def basic_dependency(source, target_lemma, alignment):
     yield 'src_'+source[alignment].token, 1
     yield 'src_pos_'+source[alignment].pos, 1
     yield 'src_cluster_'+source[alignment].cluster, 1
-    deptype = source[alignment].dependency
+
+    parent = alignment
+    gen = 0 # parent is always gen generations above the current node
+
+    deptype = source[parent].dependency
+    prev_parents = set()
+    while deptype != 'ROOT':
+        gen += 1
+        if gen > 10:
+            break # safeguard against insane dep trees
+        prev_parents.add(parent)
+
+        parent = source[parent].parent - 1
+        if parent in prev_parents:
+           break # in case of cycles in dep tree
+        yield 'src_%d_deptype_%s' %(gen, deptype), 1
+        yield 'src_%d_parent_%s' % (gen, source[parent].token), 1
+        yield 'src_%d_parent_pos_%s' % (gen, source[parent].pos), 1
+        yield 'src_%d_parent_cluster_%s' % (gen, source[parent].cluster), 1
+
     if deptype == 'ROOT':
-        yield 'src_root', 1
-    else:
-        parent = source[alignment].parent - 1
-        yield 'src_deptype_'+deptype, 1
-        yield 'src_parent_'+source[parent].token, 1
-        yield 'src_parent_pos_'+source[parent].pos, 1
-        yield 'src_parent_cluster_'+source[parent].cluster, 1
+       yield 'src_%d_parent_root' % gen, 1
+
     n_child = 0
     for src in source:
         if src.parent - 1 == alignment:
