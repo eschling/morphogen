@@ -3,6 +3,7 @@ import argparse, logging
 import gzip, cPickle
 import heapq, math, re
 from itertools import izip
+from collections import Counter, namedtuple
 import config
 from common import read_sentences
 from crf_predict import CRFModel
@@ -17,6 +18,30 @@ def read_sgm(fn):
             path, sid, src = sentence_re.match(fields[0]).groups()
             yield path, sid, src, fields[1:]
 
+Candidate = namedtuple('Candidate', 'lex_score, inflection_score, category, inflection')
+
+def candidate_translations(rev_map, tm, crf_models, source, j):
+    # For each possible lemma_category translation
+    for tgt, lex_score in tm.get(source[j].token, {}).iteritems():
+        lemma, category = tgt[:-2], tgt[-1]
+        # Find possible inflections of the lemma in this category
+        if category not in config.EXTRACTED_TAGS: continue
+        possible_inflections = rev_map.get((lemma, category), [])
+        if not possible_inflections: continue
+        # Score the inflections with the CRF models
+        features = dict((fname, fval) for ff in config.FEATURES
+                for fname, fval in ff(source, lemma, j))
+        inflection_model = crf_models[category]
+        scored_inflections = inflection_model.score_all(category,
+                possible_inflections, features)
+        # Group inflections by surface form (sum over inflection scores)
+        grouped_inflections = Counter()
+        for inflection_score, _, inflection in scored_inflections:
+            grouped_inflections[inflection] += inflection_score
+        # Produce candidate translations
+        for inflection, inflection_score in grouped_inflections.iteritems():
+            yield Candidate(lex_score, inflection_score, category, inflection)
+
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -27,21 +52,24 @@ def main():
     parser.add_argument('weights', nargs='+', help='trained models')
     parser.add_argument('sgm', help='original sentences + grammar pointers')
     parser.add_argument('out', help='grammar output directory')
-    parser.add_argument('--threshold', type=float, default=0.01,
+    parser.add_argument('-t', '--threshold', type=float, default=0.01,
             help='lexical probability threshold')
-    parser.add_argument('--ninfl', type=int, default=10,
+    parser.add_argument('-n', '--n_candidates', type=int, default=30,
             help='number of inflections per lemma')
     args = parser.parse_args()
 
     if not os.path.exists(args.out):
         os.mkdir(args.out)
 
+    min_score = math.log(args.threshold)
     logging.info('Loading lexical translation model')
     tm = {}
     with gzip.open(args.lex_model) as f:
         for line in f:
             src, tgt, prob = line.decode('utf8').split()
-            tm.setdefault(src, {})[tgt] = float(prob)
+            prob = float(prob)
+            if prob > min_score:
+                tm.setdefault(src, {})[tgt] = prob
 
     logging.info('Loading reverse inflection map')
     with open(args.rev_map) as f:
@@ -53,8 +81,6 @@ def main():
         category = fn[fn.find('.gz')-1]
         models[category] = CRFModel(fn)
 
-    min_score = math.log(args.threshold)
-
     data = izip(read_sentences(sys.stdin), read_sgm(args.sgm))
     for (source, _, _), (grm_path, sid, left, right) in data:
         out_path = os.path.join(args.out, 'grammar.{}.gz'.format(sid))
@@ -63,29 +89,19 @@ def main():
             for line in f:
                 grammar_file.write(line)
         for j, src in enumerate(source):
-            for tgt, lex_prob in tm.get(src.token, {}).iteritems():
-                if lex_prob < min_score: continue
-                lemma, category = tgt[:-2], tgt[-1]
-                if category not in config.EXTRACTED_TAGS: continue
-                possible_inflections = rev_map.get((lemma, category), [])
-                if not possible_inflections: continue
-                features = dict((fname, fval) for ff in config.FEATURES
-                        for fname, fval in ff(source, lemma, j))
-                model = models[category]
-                scored_inflections = model.score_all(category,
-                        possible_inflections, features)
-                top_inflections = heapq.nlargest(args.ninfl, scored_inflections)
-                for model_score, tag, inflection in top_inflections:
-                    phrase_features = {
-                        'Synthetic': 1,
-                        'LexicalTranslation': lex_prob,
-                        'Category_'+category: 1,
-                        'InflectionScore': model_score
-                    }
-                    feat = ' '.join('{}={}'.format(*kv)
-                            for kv in phrase_features.iteritems())
-                    grammar_file.write(u'[X] ||| {} ||| {} ||| {} ||| 0-0\n'.format(
-                        src.token, inflection, feat).encode('utf8'))
+            candidates = candidate_translations(rev_map, tm, models, source, j)
+            top_candidates = heapq.nlargest(args.n_candidates, candidates)
+            for candidate in top_candidates:
+                phrase_features = {
+                    'Synthetic': 1,
+                    'LexicalTranslation': candidate.lex_score,
+                    'Category_'+candidate.category: 1,
+                    'InflectionScore': candidate.inflection_score
+                }
+                feat = ' '.join('{}={}'.format(*kv)
+                        for kv in phrase_features.iteritems())
+                grammar_file.write(u'[X] ||| {} ||| {} ||| {} ||| 0-0\n'.format(
+                    src.token, candidate.inflection, feat).encode('utf8'))
         grammar_file.close()
         new_left = '<seg grammar="{}" id="{}">{}</seg>'.format(out_path, sid, left)
         print(' ||| '.join([new_left] + right))

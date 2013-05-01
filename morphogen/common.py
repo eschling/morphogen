@@ -11,8 +11,8 @@ def read_sentences(stream):
         src, src_pos, src_dep, src_clus, tgt, tgt_lem, tgt_tag, als = fields
 
         # Read target
-        tgt = tgt.split()
-        tgt_lem = tgt_lem.split()
+        tgt = tgt.lower().split()
+        tgt_lem = tgt_lem.lower().split()
         tgt_tag = tgt_tag.split()
         # check
         if not tgt_lem:
@@ -24,7 +24,7 @@ def read_sentences(stream):
         tgt_tokens = zip(tgt, tgt_lem, tgt_tag)
 
         # Read source
-        src = src.split()
+        src = src.lower().split()
         src_pos = src_pos.split()
         src_parents, src_dtypes = zip(*[(int(parent), typ) for parent, typ in 
             (dep.split('-') for dep in src_dep.split())])

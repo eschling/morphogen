@@ -4,7 +4,7 @@ import re
 
 fid_re = re.compile('^F(\d+) 0$')
 def main():
-    parser = argparse.ArgumentParser(description='Create cdec grammars')
+    parser = argparse.ArgumentParser(description='Decode CRF feature names')
     parser.add_argument('info', help='file containing initial weight information')
     parser.add_argument('weights', help='cdec weights')
     args = parser.parse_args()
