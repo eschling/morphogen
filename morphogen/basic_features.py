@@ -22,7 +22,7 @@ def basic_dependency(source, target_lemma, alignment):
     yield 'src_cluster_'+source[alignment].cluster, 1
     deptype = source[alignment].dependency
     if deptype == 'ROOT':
-        yield 'src_is_root', 1
+        yield 'src_root', 1
     else:
         parent = source[alignment].parent - 1
         yield 'src_deptype_'+deptype, 1

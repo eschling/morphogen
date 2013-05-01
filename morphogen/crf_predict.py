@@ -1,6 +1,7 @@
 import sys
 import argparse, logging
 import cPickle, gzip
+import numpy
 import config
 from common import read_sentences
 from crf_train import get_attributes
@@ -20,6 +21,12 @@ class CRFModel:
             for fname, fval in features.iteritems():
                 score += fval * self.weights.get(attr+'_'+fname, 0)
         return score
+
+    def score_all(self, category, inflections, features):
+        scored = [(self.score(category, tag, features), tag, inflection)
+                for tag, inflection in inflections]
+        z = numpy.logaddexp.reduce([score for score, _, _ in scored])
+        return [(score - z, tag, inflection) for score, tag, inflection in scored]
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')

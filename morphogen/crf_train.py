@@ -1,6 +1,5 @@
 import sys, os, io
 import argparse, logging
-import uuid
 import cPickle
 import config
 import tagset
@@ -31,6 +30,11 @@ class Vocabulary(dict):
 
     def expand_features(self, category, attributes, features):
         for morph in get_attributes(category, attributes):
+            # pairwise features
+            for morph in get_attributes(category, attributes):
+                fid = self.convert(u'{}+{}'.format(morph, morph))
+                yield 'F{}=1'.format(fid)
+            # translation features
             for fname, fval in features.iteritems():
                 fid = self.convert(u'{}_{}'.format(morph, fname))
                 yield 'F{}={}'.format(fid, fval)
@@ -51,7 +55,7 @@ def too_much_mem():
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    parser = argparse.ArgumentParser(description='Create cdec grammars')
+    parser = argparse.ArgumentParser(description='Create cdec CRF grammar and training data')
     parser.add_argument('category', help='Russian word category to (R/V/A/N/M)')
     parser.add_argument('rev_map', help='reverse inflection map')
     parser.add_argument('output', help='training output path')
@@ -66,14 +70,13 @@ def main():
     # Create training data paths
     if not os.path.exists(args.output):
         os.mkdir(args.output)
-    grammar_path = os.path.join(args.output, 'grammars')
-    os.mkdir(grammar_path)
+    grammar = io.open(os.path.join(args.output, 'grammar'), 'w', encoding='utf8')
     sgm = io.open(os.path.join(args.output, 'train.sgm'), 'w', encoding='utf8')
 
     fvoc = Vocabulary()
 
     n_sentences = 0
-    logging.info('Generating grammars')
+    logging.info('Generating the grammar')
     for source, target, alignment in read_sentences(sys.stdin):
         n_sentences += 1
         if n_sentences % 1000 == 0:
@@ -88,17 +91,14 @@ def main():
             if (ref_attributes, inflection) not in possible_inflections:
                 logging.debug('Skip: %s (%s)', inflection, ref_attributes)
                 continue
-            # Write grammar
-            grammar_name = os.path.join(grammar_path, uuid.uuid1().hex)
-            with open(grammar_name, 'w') as grammar:
-                for attributes, _ in possible_inflections:
-                    rule = fvoc.make_rule(lemma, category, attributes, features)
-                    grammar.write(rule.encode('utf8'))
+            # Write sentence grammar
+            for attributes, _ in possible_inflections:
+                rule = fvoc.make_rule(lemma, category, attributes, features)
+                grammar.write(rule)
             # Write src / ref
             src = lemma+'_'+category
             ref = ' '.join(get_attributes(category, ref_attributes))
-            sgm.write(u'<seg grammar="{}"> {} ||| {} {} </seg>\n'.format(
-                os.path.abspath(grammar_name), src, category, ref))
+            sgm.write(u'{} ||| {} {}\n'.format(src, category, ref))
 
     logging.info('Processed %d sentences', n_sentences)
     logging.info('Saving weights')
@@ -108,6 +108,7 @@ def main():
             f.write(u'# {}\n'.format(fname))
             f.write(u'F{} 0\n'.format(fid))
 
+    grammar.close()
     sgm.close()
 
 if __name__ == '__main__':
