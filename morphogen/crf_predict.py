@@ -1,27 +1,39 @@
 import sys
-import argparse
-import logging
-import cPickle
+import argparse, logging
+import cPickle, gzip
+import numpy
 import config
 from common import read_sentences
+from crf_train import get_attributes
+from predict import extract_instances
 
-def extract_instances(source, target, alignment):
-    """Extract (category, features, tag) training instances for a sentence pair"""
-    for i, (token, lemma, tag) in enumerate(target):
-        if tag[0] not in config.EXTRACTED_TAGS: continue
-        word_alignments = [j for (k, j) in alignment if k == i] # tgt == i - src
-        if len(word_alignments) != 1: continue # Extract only one-to-one alignments
-        (j,) = word_alignments # src
-        features = dict((fname, fval) for ff in config.FEATURES
-                for fname, fval in ff(source, lemma, j))
-        yield (token, lemma, tag), features
+class CRFModel:
+    def __init__(self, fn):
+        self.weights = {}
+        with gzip.open(fn) as f:
+            for line in f:
+                fname, fval = line.decode('utf8').split()
+                self.weights[fname] = float(fval)
+
+    def score(self, category, tag, features):
+        score = 0
+        for attr in get_attributes(category, tag):
+            for fname, fval in features.iteritems():
+                score += fval * self.weights.get(attr+'_'+fname, 0)
+        return score
+
+    def score_all(self, category, inflections, features):
+        scored = [(self.score(category, tag, features), tag, inflection)
+                for tag, inflection in inflections]
+        z = numpy.logaddexp.reduce([score for score, _, _ in scored])
+        return [(score - z, tag, inflection) for score, tag, inflection in scored]
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    parser = argparse.ArgumentParser(description='Predict using trained models')
+    parser = argparse.ArgumentParser(description='Predict using trained CRF models')
     parser.add_argument('rev_map', help='reverse inflection map')
-    parser.add_argument('models', nargs='+', help='trained models')
+    parser.add_argument('weights', nargs='+', help='trained models')
     args = parser.parse_args()
 
     logging.info('Loading reverse inflection map')
@@ -30,10 +42,9 @@ def main():
 
     models = {}
     logging.info('Loading inflection prediction models')
-    for fn in args.models:
-        with open(fn) as f:
-            category, v, m = cPickle.load(f)
-            models[category] = v, m
+    for fn in args.weights:
+        category = fn[fn.find('.gz')-1]
+        models[category] = CRFModel(fn)
 
     logging.info('Loaded models for %d categories', len(models))
 
@@ -49,16 +60,14 @@ def main():
                 print(u'Expected: {} ({}) not found'.format(gold_inflection,
                     gold_tag).encode('utf8'))
                 continue
-            vectorizer, model = models[category]
-            fvector = vectorizer.transform(features)
-            predictions = dict(zip(model.classes_, model.predict_proba(fvector)[0]))
-            scored_inflections = ((predictions.get(tag, 0), tag, inflection)
+            model = models[category]
+            scored_inflections = ((model.score(category, tag, features), tag, inflection)
                     for tag, inflection in possible_inflections)
             ranked_inflections = sorted(scored_inflections, reverse=True)
             predicted_prob, predicted_tag, predicted_inflection = ranked_inflections[0]
 
             gold_rank = 1 + [tag for _, tag, _ in ranked_inflections].index(gold_tag)
-            gold_prob = predictions.get(gold_tag, 0)
+            gold_prob = models[category].score(category, gold_tag, features) # TODO normalize
             print(u'Expected: {} ({}) r={} p={:.3f} |'
                     ' Predicted: {} ({}) p={:.3f}'.format(gold_inflection,
                 gold_tag, gold_rank, gold_prob, predicted_inflection, predicted_tag,
