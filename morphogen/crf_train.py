@@ -30,9 +30,13 @@ class Vocabulary(dict):
 
     def expand_features(self, category, attributes, features):
         for morph in get_attributes(category, attributes):
+            # target features
+            fid = self.convert(morph)
+            yield 'F{}=1'.format(fid)
             # pairwise features
-            for morph in get_attributes(category, attributes):
-                fid = self.convert(u'{}+{}'.format(morph, morph))
+            for morph2 in get_attributes(category, attributes):
+                if morph2 <= morph: continue
+                fid = self.convert(u'{}+{}'.format(morph, morph2))
                 yield 'F{}=1'.format(fid)
             # translation features
             for fname, fval in features.iteritems():
