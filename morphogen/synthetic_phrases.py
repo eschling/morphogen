@@ -1,9 +1,9 @@
 import sys, os
 import argparse, logging
 import gzip, cPickle
-import heapq, math, re
-from itertools import izip
-from collections import Counter, namedtuple
+import heapq, math, re, numpy
+from itertools import izip, groupby
+from collections import namedtuple
 import config
 from common import read_sentences
 from crf_predict import CRFModel
@@ -18,11 +18,14 @@ def read_sgm(fn):
             path, sid, src = sentence_re.match(fields[0]).groups()
             yield path, sid, src, fields[1:]
 
-Candidate = namedtuple('Candidate', 'lex_score, inflection_score, category, inflection')
+Candidate = namedtuple('Candidate', 'lex_score, rev_lex_score, inflection_score, '
+                                    'inflection_rank, category, inflection')
 
-def candidate_translations(rev_map, tm, crf_models, source, j):
+def candidate_translations(rev_map, tm, rev_tm, crf_models, source, j):
     # For each possible lemma_category translation
     for tgt, lex_score in tm.get(source[j].token, {}).iteritems():
+        if tgt not in rev_tm.get(source[j].token, {}): continue
+        rev_lex_score = rev_tm[source[j].token][tgt]
         lemma, category = tgt[:-2], tgt[-1]
         # Find possible inflections of the lemma in this category
         if category not in config.EXTRACTED_TAGS: continue
@@ -31,16 +34,22 @@ def candidate_translations(rev_map, tm, crf_models, source, j):
         # Score the inflections with the CRF models
         features = dict((fname, fval) for ff in config.FEATURES
                 for fname, fval in ff(source, lemma, j))
-        inflection_model = crf_models[category]
-        scored_inflections = inflection_model.score_all(category,
-                possible_inflections, features)
-        # Group inflections by surface form (sum over inflection scores)
-        grouped_inflections = Counter()
-        for inflection_score, _, inflection in scored_inflections:
-            grouped_inflections[inflection] += inflection_score
+        scored_inflections = crf_models[category].score_all(possible_inflections, features)
+        # Marginalize over tags with same surface form
+        ## 1. sort
+        grouped_inflections = sorted([(score, inflection)
+            for score, _, inflection in scored_inflections])
+        ## 2. group by surface
+        grouped_inflections = groupby(grouped_inflections, key=lambda t:t[1])
+        ## 3. marginalize
+        grouped_inflections = [(numpy.logaddexp.reduce([score for score, _ in group]),
+            inflection) for inflection, group in grouped_inflections]
+        # Compute ranks (sort by decreasing score)
+        sorted_inflections = sorted(grouped_inflections, reverse=True)
         # Produce candidate translations
-        for inflection, inflection_score in grouped_inflections.iteritems():
-            yield Candidate(lex_score, inflection_score, category, inflection)
+        for rank, (inflection_score, inflection) in enumerate(sorted_inflections):
+            yield Candidate(lex_score, rev_lex_score, inflection_score, rank,
+                    category, inflection)
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -48,6 +57,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create synthetic phrases'
             ' using trained CRF models')
     parser.add_argument('lex_model', help='lexical translation model')
+    parser.add_argument('rev_lex_model', help='reverse lexical translation model')
     parser.add_argument('rev_map', help='reverse inflection map')
     parser.add_argument('weights', nargs='+', help='trained models')
     parser.add_argument('sgm', help='original sentences + grammar pointers')
@@ -62,7 +72,7 @@ def main():
         os.mkdir(args.out)
 
     min_score = math.log(args.threshold)
-    logging.info('Loading lexical translation model')
+    logging.info('Loading lexical translation models')
     tm = {}
     with gzip.open(args.lex_model) as f:
         for line in f:
@@ -70,6 +80,11 @@ def main():
             prob = float(prob)
             if prob > min_score:
                 tm.setdefault(src, {})[tgt] = prob
+    rev_tm = {}
+    with gzip.open(args.rev_lex_model) as f:
+        for line in f:
+            src, tgt, prob = line.decode('utf8').split()
+            rev_tm.setdefault(tgt, {})[src] = float(prob)
 
     logging.info('Loading reverse inflection map')
     with open(args.rev_map) as f:
@@ -79,8 +94,9 @@ def main():
     models = {}
     for fn in args.weights:
         category = fn[fn.find('.gz')-1]
-        models[category] = CRFModel(fn)
+        models[category] = CRFModel(category, fn)
 
+    logging.info('Generating extended grammars')
     data = izip(read_sentences(sys.stdin), read_sgm(args.sgm))
     for (source, _, _), (grm_path, sid, left, right) in data:
         out_path = os.path.join(args.out, 'grammar.{}.gz'.format(sid))
@@ -89,14 +105,16 @@ def main():
             for line in f:
                 grammar_file.write(line)
         for j, src in enumerate(source):
-            candidates = candidate_translations(rev_map, tm, models, source, j)
+            candidates = candidate_translations(rev_map, tm, rev_tm, models, source, j)
             top_candidates = heapq.nlargest(args.n_candidates, candidates)
             for candidate in top_candidates:
                 phrase_features = {
                     'Synthetic': 1,
                     'LexicalTranslation': candidate.lex_score,
+                    'ReverseLexicalTranslation': candidate.rev_lex_score,
                     'Category_'+candidate.category: 1,
-                    'InflectionScore': candidate.inflection_score
+                    'InflectionScore': candidate.inflection_score,
+                    'InflectionRank': candidate.inflection_rank
                 }
                 feat = ' '.join('{}={}'.format(*kv)
                         for kv in phrase_features.iteritems())

@@ -10,9 +10,9 @@ def main():
     args = parser.parse_args()
 
     names = {}
-    with open(args.info) as f:
+    with gzip.open(args.info) as f:
         for line in f:
-            assert line.startswith('# ')
+            assert line.startswith('# '), line
             fname = line.decode('utf8')[2:-1]
             line = next(f)
             fid = int(fid_re.match(line).group(1))

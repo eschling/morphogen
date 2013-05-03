@@ -1,29 +1,30 @@
 import sys
 import argparse, logging
 import cPickle, gzip
-import numpy
+import math, numpy
 import config
 from common import read_sentences
 from crf_train import get_attributes
 from predict import extract_instances
 
 class CRFModel:
-    def __init__(self, fn):
+    def __init__(self, category, fn):
+        self.category = category
         self.weights = {}
         with gzip.open(fn) as f:
             for line in f:
                 fname, fval = line.decode('utf8').split()
                 self.weights[fname] = float(fval)
 
-    def score(self, category, tag, features):
+    def score(self, tag, features):
         score = 0
-        for attr in get_attributes(category, tag):
+        for attr in get_attributes(self.category, tag):
             for fname, fval in features.iteritems():
                 score += fval * self.weights.get(attr+'_'+fname, 0)
         return score
 
-    def score_all(self, category, inflections, features):
-        scored = [(self.score(category, tag, features), tag, inflection)
+    def score_all(self, inflections, features):
+        scored = [(self.score(tag, features), tag, inflection)
                 for tag, inflection in inflections]
         z = numpy.logaddexp.reduce([score for score, _, _ in scored])
         return [(score - z, tag, inflection) for score, tag, inflection in scored]
@@ -44,11 +45,11 @@ def main():
     logging.info('Loading inflection prediction models')
     for fn in args.weights:
         category = fn[fn.find('.gz')-1]
-        models[category] = CRFModel(fn)
+        models[category] = CRFModel(category, fn)
 
     logging.info('Loaded models for %d categories', len(models))
 
-    stats = {cat: [0, 0] for cat in config.EXTRACTED_TAGS}
+    stats = {cat: [0, 0, 0, 0] for cat in config.EXTRACTED_TAGS}
 
     for source, target, alignment in read_sentences(sys.stdin):
         for word, features in extract_instances(source, target, alignment):
@@ -60,26 +61,32 @@ def main():
                 print(u'Expected: {} ({}) not found'.format(gold_inflection,
                     gold_tag).encode('utf8'))
                 continue
+
             model = models[category]
-            scored_inflections = ((model.score(category, tag, features), tag, inflection)
-                    for tag, inflection in possible_inflections)
+
+            scored_inflections = model.score_all(possible_inflections, features)
             ranked_inflections = sorted(scored_inflections, reverse=True)
-            predicted_prob, predicted_tag, predicted_inflection = ranked_inflections[0]
+            predicted_score, predicted_tag, predicted_inflection = ranked_inflections[0]
 
             gold_rank = 1 + [tag for _, tag, _ in ranked_inflections].index(gold_tag)
-            gold_prob = models[category].score(category, gold_tag, features) # TODO normalize
-            print(u'Expected: {} ({}) r={} p={:.3f} |'
-                    ' Predicted: {} ({}) p={:.3f}'.format(gold_inflection,
-                gold_tag, gold_rank, gold_prob, predicted_inflection, predicted_tag,
-                predicted_prob).encode('utf8'))
+            gold_score = next((score for score, tag, _ in ranked_inflections if tag == gold_tag))
+
+            print(u'Expected: {} ({}) r={} score={:.3f} |'
+                    ' Predicted: {} ({}) score={:.3f}'.format(gold_inflection,
+                gold_tag, gold_rank, gold_score, predicted_inflection, predicted_tag,
+                predicted_score).encode('utf8'))
             
             stats[category][0] += 1
             stats[category][1] += 1/float(gold_rank)
+            stats[category][2] += (gold_inflection == predicted_inflection)
+            stats[category][3] += gold_score
 
-    for category, (n_instances, rrank_sum) in stats.items():
+    for category, (n_instances, rrank_sum, n_correct, total_log_prob) in stats.items():
         if n_instances == 0: continue
         mrr = rrank_sum/n_instances
-        print('Category {}: {} instances -> MRR={:.3f}'.format(category, n_instances, mrr))
+        accuracy = n_correct/float(n_instances)
+        ppl = math.exp(-total_log_prob/n_instances)
+        print('Category {}: MRR={:.3f} acc={:.3f} ppl={:.1f} ({:>4} instances)'.format(category, mrr, accuracy, ppl, n_instances))
 
 if __name__ == '__main__':
     main()
