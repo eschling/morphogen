@@ -1,9 +1,10 @@
 import logging
+import re
 from collections import namedtuple
 
 AnnotatedToken = namedtuple('AnnotatedToken', 'token, pos, parent, dependency, cluster')
 
-def read_sentences(stream):
+def read_sentences(stream, skip_empty=True):
     """Read annotated sentences in the format:
     EN ||| EN POS ||| EN dep ||| EN clus ||| RU ||| RU lemma ||| RU tag ||| alignment"""
     for line in stream:
@@ -15,7 +16,7 @@ def read_sentences(stream):
         tgt_lem = tgt_lem.lower().split()
         tgt_tag = tgt_tag.split()
         # check
-        if not tgt_lem:
+        if skip_empty and not tgt_lem:
             logging.debug('Skip empty analysis for sentence: %s', ' '.join(tgt))
             continue
         if not len(tgt) == len(tgt_lem) == len(tgt_tag):
@@ -43,3 +44,12 @@ def read_sentences(stream):
 
         yield src_tokens, tgt_tokens, alignments
 
+sentence_re = re.compile('^<seg grammar="([^"]+)" id="(\d+)">(.+)</seg>$')
+fields_re = re.compile('\s*\|\|\|\s*')
+
+def read_sgm(fn):
+    with open(fn) as f:
+        for line in f:
+            fields = fields_re.split(line.decode('utf8')[:-1])
+            path, sid, src = sentence_re.match(fields[0]).groups()
+            yield path, sid, src, fields[1:]

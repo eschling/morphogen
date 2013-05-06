@@ -1,22 +1,12 @@
 import sys, os
 import argparse, logging
 import gzip, cPickle
-import heapq, math, re, numpy
+import heapq, math, numpy
 from itertools import izip, groupby
 from collections import namedtuple
 import config
-from common import read_sentences
-from crf_predict import CRFModel
-
-sentence_re = re.compile('^<seg grammar="([^"]+)" id="(\d+)">(.+)</seg>$')
-fields_re = re.compile('\s*\|\|\|\s*')
-
-def read_sgm(fn):
-    with open(fn) as f:
-        for line in f:
-            fields = fields_re.split(line[:-1])
-            path, sid, src = sentence_re.match(fields[0]).groups()
-            yield path, sid, src, fields[1:]
+from common import read_sentences, read_sgm
+from models import load_models
 
 Candidate = namedtuple('Candidate', 'lex_score, rev_lex_score, inflection_score, '
                                     'inflection_rank, category, inflection')
@@ -59,7 +49,7 @@ def main():
     parser.add_argument('lex_model', help='lexical translation model')
     parser.add_argument('rev_lex_model', help='reverse lexical translation model')
     parser.add_argument('rev_map', help='reverse inflection map')
-    parser.add_argument('weights', nargs='+', help='trained models')
+    parser.add_argument('models', nargs='+', help='trained models')
     parser.add_argument('sgm', help='original sentences + grammar pointers')
     parser.add_argument('out', help='grammar output directory')
     parser.add_argument('-t', '--threshold', type=float, default=0.01,
@@ -91,19 +81,19 @@ def main():
         rev_map = cPickle.load(f)
 
     logging.info('Loading inflection prediction models')
-    models = {}
-    for fn in args.weights:
-        category = fn[fn.find('.gz')-1]
-        models[category] = CRFModel(category, fn)
+    models = load_models(args.models)
 
     logging.info('Generating extended grammars')
-    data = izip(read_sentences(sys.stdin), read_sgm(args.sgm))
+    data = izip(read_sentences(sys.stdin, skip_empty=False), read_sgm(args.sgm))
     for (source, _, _), (grm_path, sid, left, right) in data:
+        # Create grammar
         out_path = os.path.join(args.out, 'grammar.{}.gz'.format(sid))
         grammar_file = gzip.open(out_path, 'w')
+        # Copy original grammar
         with gzip.open(grm_path) as f:
             for line in f:
                 grammar_file.write(line)
+        # Generate synthetic phrases
         for j, src in enumerate(source):
             candidates = candidate_translations(rev_map, tm, rev_tm, models, source, j)
             top_candidates = heapq.nlargest(args.n_candidates, candidates)
@@ -121,8 +111,9 @@ def main():
                 grammar_file.write(u'[X] ||| {} ||| {} ||| {} ||| 0-0\n'.format(
                     src.token, candidate.inflection, feat).encode('utf8'))
         grammar_file.close()
-        new_left = '<seg grammar="{}" id="{}">{}</seg>'.format(out_path, sid, left)
-        print(' ||| '.join([new_left] + right))
+        # Write sgm
+        new_left = u'<seg grammar="{}" id="{}">{}</seg>'.format(out_path, sid, left)
+        print(u' ||| '.join([new_left] + right).encode('utf8'))
 
 if __name__ == '__main__':
     main()

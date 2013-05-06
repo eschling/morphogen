@@ -2,11 +2,10 @@ import sys
 import argparse
 import logging
 import cPickle
-import numpy, math
-from collections import defaultdict
+import math
 import config
-import tagset
 from common import read_sentences
+from models import load_models
 
 def extract_instances(source, target, alignment):
     """Extract (category, features, tag) training instances for a sentence pair"""
@@ -18,45 +17,6 @@ def extract_instances(source, target, alignment):
         features = dict((fname, fval) for ff in config.FEATURES
                 for fname, fval in ff(source, lemma, j))
         yield (token, lemma, tag), features
-
-class SimpleModel:
-    def __init__(self, vectorizer, clf):
-        self.vectorizer = vectorizer
-        self.clf = clf
-
-    def score_all(self, inflections, features):
-        fvector = self.vectorizer.transform(features)
-        predictions = dict(zip(self.clf.classes_, self.clf.predict_log_proba(fvector)[0]))
-        scored = [(predictions.get(tag, float('-inf')), tag, inflection)
-                for tag, inflection in inflections]
-        z = numpy.logaddexp.reduce([score for score, _, _ in scored])
-        return [(score - z, tag, inflection) for score, tag, inflection in scored]
-
-class VectorModel:
-    def __init__(self, category, vectorizer, clfs):
-        self.category = tagset.categories[category]
-        self.vectorizer = vectorizer
-        self.clfs = clfs
-
-    def score_all(self, inflections, features):
-        fvector = self.vectorizer.transform([features])
-        score_vectors = {}
-        for i, clf in self.clfs.iteritems():
-            if clf is None: # univalued attribute
-                score_vectors[i] = defaultdict(int)
-            else:
-                score_vectors[i] = dict(zip(clf.classes_, clf.predict_log_proba(fvector)[0]))
-        score = lambda tag: sum(score_vectors[i][v]
-                for i, v in enumerate(tag.ljust(tagset.tag_length[self.category], '-')))
-        scored = [(score(tag), tag, inflection) for tag, inflection in inflections]
-        z = numpy.logaddexp.reduce([score for score, _, _ in scored])
-        return [(score - z, tag, inflection) for score, tag, inflection in scored]
-        
-
-def make_model(category, v, m):
-    if isinstance(m, dict):
-        return VectorModel(category, v, m)
-    return SimpleModel(v, m)
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -70,13 +30,8 @@ def main():
     with open(args.rev_map) as f:
         rev_map = cPickle.load(f)
 
-    models = {}
     logging.info('Loading inflection prediction models')
-    for fn in args.models:
-        with open(fn) as f:
-            category, v, m = cPickle.load(f)
-            models[category] = make_model(category, v, m)
-
+    models = load_models(args.models)
     logging.info('Loaded models for %d categories', len(models))
 
     stats = {cat: [0, 0, 0, 0] for cat in config.EXTRACTED_TAGS}
