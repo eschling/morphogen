@@ -1,4 +1,5 @@
 import sys, os, io
+import uuid
 import argparse, logging
 import cPickle
 import config
@@ -59,7 +60,7 @@ def too_much_mem():
 def main():
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    parser = argparse.ArgumentParser(description='Create cdec CRF grammar and training data')
+    parser = argparse.ArgumentParser(description='Create cdec CRF grammars and training data')
     parser.add_argument('category', help='Russian word category to (R/V/A/N/M)')
     parser.add_argument('rev_map', help='reverse inflection map')
     parser.add_argument('output', help='training output path')
@@ -74,13 +75,16 @@ def main():
     # Create training data paths
     if not os.path.exists(args.output):
         os.mkdir(args.output)
-    grammar = io.open(os.path.join(args.output, 'grammar'), 'w', encoding='utf8')
+    grammar_path = os.path.join(args.output, 'grammars')
+    if not os.path.exists(grammar_path):
+        os.mkdir(grammar_path)
+
     sgm = io.open(os.path.join(args.output, 'train.sgm'), 'w', encoding='utf8')
 
     fvoc = Vocabulary()
 
     n_sentences = 0
-    logging.info('Generating the grammar')
+    logging.info('Generating the grammars')
     for source, target, alignment in read_sentences(sys.stdin):
         n_sentences += 1
         if n_sentences % 1000 == 0:
@@ -96,13 +100,16 @@ def main():
                 logging.debug('Skip: %s (%s)', inflection, ref_attributes)
                 continue
             # Write sentence grammar
-            for attributes, _ in possible_inflections:
-                rule = fvoc.make_rule(lemma, category, attributes, features)
-                grammar.write(rule)
+            grammar_name = os.path.join(grammar_path, uuid.uuid1().hex)
+            with io.open(grammar_name, 'w', encoding='utf8') as grammar:
+                for attributes, _ in possible_inflections:
+                    rule = fvoc.make_rule(lemma, category, attributes, features)
+                    grammar.write(rule)
             # Write src / ref
             src = lemma+'_'+category
             ref = ' '.join(get_attributes(category, ref_attributes))
-            sgm.write(u'{} ||| {} {}\n'.format(src, category, ref))
+            sgm.write(u'<seg grammar="{}"> {} ||| {} {} </seg>\n'.format(
+                os.path.abspath(grammar_name), src, category, ref))
 
     logging.info('Processed %d sentences', n_sentences)
     logging.info('Saving weights')
@@ -112,7 +119,6 @@ def main():
             f.write(u'# {}\n'.format(fname))
             f.write(u'F{} 0\n'.format(fid))
 
-    grammar.close()
     sgm.close()
 
 if __name__ == '__main__':
