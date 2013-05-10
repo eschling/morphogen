@@ -5,7 +5,7 @@ import logging
 from collections import defaultdict
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.linear_model import LogisticRegression
-import tagset
+import tagset # FIXME use config
 from common import read_sentences
 from train import extract_instances
 

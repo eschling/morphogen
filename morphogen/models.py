@@ -1,8 +1,8 @@
 import gzip, cPickle
 import numpy
 from collections import defaultdict
-import tagset
-from crf_train import get_attributes
+import tagset # FIXME use config
+import config
 
 class SimpleModel:
     def __init__(self, vectorizer, clf):
@@ -48,7 +48,7 @@ class CRFModel:
 
     def score(self, tag, features):
         score = 0
-        for attr in get_attributes(self.category, tag):
+        for attr in config.get_attributes(self.category, tag):
             for fname, fval in features.iteritems():
                 score += fval * self.weights.get(attr+'_'+fname, 0)
         return score

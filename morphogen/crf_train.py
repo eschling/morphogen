@@ -3,7 +3,6 @@ import uuid
 import argparse, logging
 import cPickle
 import config
-import tagset
 from common import read_sentences
 
 def extract_instances(category, source, target, alignment):
@@ -17,12 +16,6 @@ def extract_instances(category, source, target, alignment):
                 for fname, fval in ff(source, lemma, j))
         yield (token, lemma, tag), features
 
-def get_attributes(cat, attrs):
-    category = tagset.categories[cat]
-    for i, attr in enumerate(attrs, 1):
-        if attr != '-':
-            yield tagset.attributes[category, i]+'_'+attr
-
 class Vocabulary(dict):
     def convert(self, feature):
         if feature not in self:
@@ -30,12 +23,12 @@ class Vocabulary(dict):
         return self[feature]
 
     def expand_features(self, category, attributes, features):
-        for morph in get_attributes(category, attributes):
+        for morph in config.get_attributes(category, attributes):
             # target features
             fid = self.convert(morph)
             yield 'F{}=1'.format(fid)
             # pairwise features
-            for morph2 in get_attributes(category, attributes):
+            for morph2 in config.get_attributes(category, attributes):
                 if morph2 <= morph: continue
                 fid = self.convert(u'{}+{}'.format(morph, morph2))
                 yield 'F{}=1'.format(fid)
@@ -46,7 +39,7 @@ class Vocabulary(dict):
 
     def make_rule(self, lemma, category, attributes, features):
         src = lemma+'_'+category
-        tgt = ' '.join(get_attributes(category, attributes))
+        tgt = ' '.join(config.get_attributes(category, attributes))
         feat = ' '.join(self.expand_features(category, attributes, features))
         return (u'[S] ||| {} ||| {} {} ||| {}\n'.format(src, category, tgt, feat))
 
@@ -107,7 +100,7 @@ def main():
                     grammar.write(rule)
             # Write src / ref
             src = lemma+'_'+category
-            ref = ' '.join(get_attributes(category, ref_attributes))
+            ref = ' '.join(config.get_attributes(category, ref_attributes))
             sgm.write(u'<seg grammar="{}"> {} ||| {} {} </seg>\n'.format(
                 os.path.abspath(grammar_name), src, category, ref))
 
