@@ -76,7 +76,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create synthetic phrases'
             ' using trained CRF models and lemma grammar')
     parser.add_argument('rev_map', help='reverse inflection map')
-    parser.add_argument('weights', nargs='+', help='trained models')
+    parser.add_argument('models', nargs='+', help='trained models')
     parser.add_argument('sgm', help='original sentences + grammar pointers')
     parser.add_argument('sgm_lem', help='original sentences + lemma grammar pointers')
     parser.add_argument('out', help='grammar output directory')
