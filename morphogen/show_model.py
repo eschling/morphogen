@@ -1,3 +1,4 @@
+import sys
 import argparse
 import cPickle
 import heapq
@@ -9,13 +10,11 @@ def main():
 
     with open(args.model) as f:
         category, vectorizer, model = cPickle.load(f)
-    
-    fnames = vectorizer.get_feature_names()
 
     for cls, weights in zip(model.classes_[:-1], model.coef_):
-        print '{}{}:'.format(category, cls),
-        top = heapq.nlargest(10, zip(weights, fnames))
-        print(' '.join(u'{1}={0}'.format(*wf) for wf in top).encode('utf8'))
+        sys.stdout.write(u'{}{}: '.format(category, cls).encode('utf8'))
+        top = heapq.nlargest(10, vectorizer.inverse_transform(weights)[0].iteritems(), key=lambda t: t[1])
+        print(' '.join(u'{}={}'.format(f, w) for f, w in top).encode('utf8'))
 
 if __name__ == '__main__':
     main()

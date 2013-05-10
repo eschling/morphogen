@@ -70,3 +70,4 @@ def load_models(model_files):
         elif fn.endswith('.gz'):
             category = fn[fn.find('.gz')-1]
             models[category] = CRFModel(category, fn)
+    return models
