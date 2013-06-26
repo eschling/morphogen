@@ -6,7 +6,7 @@ AnnotatedToken = namedtuple('AnnotatedToken', 'token, pos, parent, dependency, c
 
 def read_sentences(stream, skip_empty=True):
     """Read annotated sentences in the format:
-    EN ||| EN POS ||| EN dep ||| EN clus ||| RU ||| RU lemma ||| RU tag ||| alignment"""
+    EN ||| EN POS ||| EN dep ||| EN clus ||| RU ||| RU lemma ||| RU tag ||| EN-RU alignment"""
     for line in stream:
         fields = line.decode('utf8')[:-1].split(' ||| ')
         src, src_pos, src_dep, src_clus, tgt, tgt_lem, tgt_tag, als = fields
@@ -38,7 +38,7 @@ def read_sentences(stream, skip_empty=True):
                     len(src), len(src_pos), len(src_parents), len(src_dtypes), len(src_clus))
             continue
 
-        # Read alignment (tgt - src) [ru - en]
+        # Read alignment (src - tgt) [en - ru]
         alignments = [(int(i), int(j)) for i, j in
             (point.split('-') for point in als.split())]
 

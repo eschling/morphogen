@@ -40,7 +40,7 @@ def synthetic_rule(rev_map, models, rule, source, match):
     rule_features = Counter(rule.features)
     rule_features['Synthetic'] = 1
     inflected_rhs = []
-    for rule_i, tgt in enumerate(rule.rhs):
+    for rule_j, tgt in enumerate(rule.rhs):
         # Skip non-predicted categories
         m = lemma_re.match(tgt)
         if not m:
@@ -51,14 +51,14 @@ def synthetic_rule(rev_map, models, rule, source, match):
         possible_inflections = rev_map.get((lemma, category), [])
         if not possible_inflections: return
         # Translate alignment point
-        alignments = [rule_j for rule_j, rule_k in rule.alignment if rule_k == rule_i]
+        alignments = [rule_i for rule_i, rule_k in rule.alignment if rule_k == rule_j]
         if len(alignments) != 1: return # skip non 1-n alignment
-        j = match + alignments[0]
-        assert 0 <= j < len(source)
+        i = match + alignments[0]
+        assert 0 <= i < len(source)
         #logging.debug('Match for `%s`/%s: %s', unicode(rule), tgt, source[j].token)
         # Score the inflections with the CRF models
         inflection_features = dict((fname, fval) for ff in config.FEATURES
-                for fname, fval in ff(source, lemma, j))
+                for fname, fval in ff(source, lemma, i))
         scored_inflections = models[category].score_all(possible_inflections,
                 inflection_features)
         # could produce multiple inflections here
@@ -76,7 +76,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create synthetic phrases'
             ' using trained CRF models and lemma grammar')
     parser.add_argument('rev_map', help='reverse inflection map')
-    parser.add_argument('models', nargs='+', help='trained models')
+    parser.add_argument('models', nargs='+', help='trained models (category:file)')
     parser.add_argument('sgm', help='original sentences + grammar pointers')
     parser.add_argument('sgm_lem', help='original sentences + lemma grammar pointers')
     parser.add_argument('out', help='grammar output directory')

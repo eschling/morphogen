@@ -11,11 +11,11 @@ from models import load_models
 Candidate = namedtuple('Candidate', 'lex_score, rev_lex_score, inflection_score, '
                                     'inflection_rank, category, inflection')
 
-def candidate_translations(rev_map, tm, rev_tm, crf_models, source, j):
+def candidate_translations(rev_map, tm, rev_tm, crf_models, source, i):
     # For each possible lemma_category translation
-    for tgt, lex_score in tm.get(source[j].token, {}).iteritems():
-        if tgt not in rev_tm.get(source[j].token, {}): continue
-        rev_lex_score = rev_tm[source[j].token][tgt]
+    for tgt, lex_score in tm.get(source[i].token, {}).iteritems():
+        if tgt not in rev_tm.get(source[i].token, {}): continue
+        rev_lex_score = rev_tm[source[i].token][tgt]
         lemma, category = tgt[:-2], tgt[-1]
         # Find possible inflections of the lemma in this category
         if category not in config.EXTRACTED_TAGS: continue
@@ -23,7 +23,7 @@ def candidate_translations(rev_map, tm, rev_tm, crf_models, source, j):
         if not possible_inflections: continue
         # Score the inflections with the CRF models
         features = dict((fname, fval) for ff in config.FEATURES
-                for fname, fval in ff(source, lemma, j))
+                for fname, fval in ff(source, lemma, i))
         scored_inflections = crf_models[category].score_all(possible_inflections, features)
         # Marginalize over tags with same surface form
         ## 1. sort
@@ -49,7 +49,7 @@ def main():
     parser.add_argument('lex_model', help='lexical translation model')
     parser.add_argument('rev_lex_model', help='reverse lexical translation model')
     parser.add_argument('rev_map', help='reverse inflection map')
-    parser.add_argument('models', nargs='+', help='trained models')
+    parser.add_argument('models', nargs='+', help='trained models (category:file)')
     parser.add_argument('sgm', help='original sentences + grammar pointers')
     parser.add_argument('out', help='grammar output directory')
     parser.add_argument('-t', '--threshold', type=float, default=0.01,
@@ -94,8 +94,8 @@ def main():
             for line in f:
                 grammar_file.write(line)
         # Generate synthetic phrases
-        for j, src in enumerate(source):
-            candidates = candidate_translations(rev_map, tm, rev_tm, models, source, j)
+        for i, src in enumerate(source):
+            candidates = candidate_translations(rev_map, tm, rev_tm, models, source, i)
             top_candidates = heapq.nlargest(args.n_candidates, candidates)
             for candidate in top_candidates:
                 phrase_features = {

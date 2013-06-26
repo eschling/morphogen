@@ -9,13 +9,13 @@ from common import read_sentences
 
 def extract_instances(category, source, target, alignment):
     """Extract (features, tag) training instances for a sentence pair"""
-    for i, (_, lemma, tag) in enumerate(target):
+    for j, (_, lemma, tag) in enumerate(target):
         if tag[0] != category: continue
-        word_alignments = [j for (k, j) in alignment if k == i] # tgt == i - src
-        if len(word_alignments) != 1: continue # Extract only one-to-one alignments
-        (j,) = word_alignments # src
+        word_alignments = [i for (i, k) in alignment if k == j] # src - tgt == j
+        if len(word_alignments) != 1: continue # Extract only 1-n alignments
+        (i,) = word_alignments # src
         features = dict((fname, fval) for ff in config.FEATURES
-                for fname, fval in ff(source, lemma, j))
+                for fname, fval in ff(source, lemma, i))
         yield features, tag[1:]
 
 def main():
