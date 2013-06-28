@@ -4,9 +4,8 @@ import gzip, cPickle
 from itertools import izip
 from collections import namedtuple, Counter
 import config
-from common import read_sentences
+from common import read_sentences, read_sgm
 from models import load_models
-from synthetic_phrases import read_sgm
 
 _Rule = namedtuple('_Rule', 'lhs, rhs, features, alignment')
 class Rule(_Rule):
@@ -66,6 +65,8 @@ def synthetic_rule(rev_map, models, rule, source, match):
         inflected_rhs.append(inflection)
         rule_features['Category_'+category] += 1
         rule_features['InflectionScore'] += score
+
+    # FIXME Should we not create a rule if nothing is inflected?
 
     assert len(inflected_rhs) == len(rule.rhs)
     yield Rule(rule.lhs, inflected_rhs, rule_features, rule.alignment)

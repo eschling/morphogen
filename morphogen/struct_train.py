@@ -37,7 +37,8 @@ def main():
             category = tag[0]
             ref_attributes = tag[1:]
             possible_inflections = rev_map.get((lemma, category), [])
-            if len(possible_inflections) == 1: continue # Skip if |inflections| = 1
+            # Skip if |inflections| = 1 [p(infl | lemma) = 1]
+            if len(possible_inflections) == 1: continue
             if (ref_attributes, ref_inflection) not in possible_inflections: continue
             X.append(features)
             # Y_all / Y_lim

@@ -24,6 +24,8 @@ def main():
     parser = argparse.ArgumentParser(description='Predict using trained models')
     parser.add_argument('rev_map', help='reverse inflection map')
     parser.add_argument('models', nargs='+', help='trained models (category:file)')
+    parser.add_argument('--ambiguous', action='store_true',
+            help='evaluate only lemmas with multiple inflections')
     args = parser.parse_args()
 
     logging.info('Loading reverse inflection map')
@@ -46,6 +48,7 @@ def main():
                 print(u'Expected: {} ({}) not found'.format(gold_inflection,
                     gold_tag).encode('utf8'))
                 continue
+            if args.ambiguous and len(possible_inflections) == 1: continue
 
             model = models[category]
 
