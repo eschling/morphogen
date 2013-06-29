@@ -78,6 +78,17 @@ class StructuredModel:
         return [(score, tag, inflection) for score, (tag, inflection)
                 in zip(scores, inflections)]
 
+    @property
+    def output_features(self):
+        for label in self.label_dict.get_feature_names():
+            yield label
+
+    def weights(self, label):
+        j = self.label_dict.feature_names_.index(label)
+        for i, feature in enumerate(self.feature_dict.get_feature_names()):
+            yield feature, self.model.weights[i, j]
+        for k, other_label in enumerate(self.label_dict.get_feature_names()):
+            yield other_label, self.model.y_weights[j, k]
 
 def load_models(model_files):
     models = {}
