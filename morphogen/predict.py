@@ -36,7 +36,7 @@ def main():
     models = load_models(args.models)
     logging.info('Loaded models for %d categories', len(models))
 
-    stats = {cat: [0, 0, 0, 0] for cat in config.EXTRACTED_TAGS}
+    stats = {cat: [0, 0, 0, 0, 0] for cat in config.EXTRACTED_TAGS}
 
     for source, target, alignment in read_sentences(sys.stdin):
         for word, features in extract_instances(source, target, alignment):
@@ -69,14 +69,16 @@ def main():
             stats[category][1] += 1/float(gold_rank)
             stats[category][2] += (gold_inflection == predicted_inflection)
             stats[category][3] += gold_score
+            stats[category][4] += len(ranked_inflections)
 
-    for category, (n_instances, rrank_sum, n_correct, total_log_prob) in stats.items():
+    for category, (n_instances, rrank_sum, n_correct, total_log_prob, n_inflections) in stats.items():
         if n_instances == 0: continue
         mrr = rrank_sum/n_instances
         accuracy = n_correct/float(n_instances)
         ppl = math.exp(-total_log_prob/n_instances)
-        print('Category {}: MRR={:.3f} acc={:.1%} ppl={:.2f} ({} instances)'.format(
-            category, mrr, accuracy, ppl, n_instances))
+        avg_inflections = n_inflections/float(n_instances)
+        print('Category {}: MRR={:.3f} acc={:.1%} ppl={:.2f} ({} instances; avg #infl={:.2f})'.format(
+            category, mrr, accuracy, ppl, n_instances, avg_inflections))
 
 if __name__ == '__main__':
     main()
