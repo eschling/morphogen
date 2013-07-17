@@ -1,9 +1,9 @@
-morphogen is a tool for improving machine translation into morphologically rich languages. It uses source context to predict inflections, and uses these inflection models to create augmented grammars that can be used with a standard decoder.
+`morphogen` is a tool for improving machine translation into morphologically rich languages. It uses source context to predict inflections, and uses these inflection models to create augmented grammars that can be used with a standard decoder.
 
 ## Dependencies
-While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [cdec](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and 600 Brown clusters produced from large amounts of monolingual English data. These are all publically available. 
+While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [`cdec`](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and 600 Brown clusters produced from large amounts of monolingual English data. These are all publically available. 
 
-If no morphological segmentations are given, we use [fast umorph](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed on your machine.
+If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed on your machine.
 
 The tagging and parsing could theoretically be done with any tool. Morphogen only requires that the dependency parses are in the Stanford basic dependency format.
 
@@ -11,7 +11,7 @@ The tagging and parsing could theoretically be done with any tool. Morphogen onl
 
 ### Unsupervised
 
-A [ducttape](https://github.com/jhclark/ducttape) workflow is provided in the examples folder. If you replace the dev, test, and train variables with paths to your data sets (in ` SRC ||| TGT ` bitext format), point the morphogen global variable at your clone of morphogen, specify a type file for unsupervised segmentations, and run `ducttape workflow.tape -p basic` it will:
+A [`ducttape`](https://github.com/jhclark/ducttape) workflow is provided in the examples folder. If you replace the dev, test, and train variables with paths to your data sets (in ` SRC ||| TGT ` bitext format), point the morphogen global variable at your clone of morphogen, specify a type file for unsupervised segmentations, and run `ducttape workflow.tape -p basic` it will:
 - clone all of the necessary external tools to your machine
 - preprocess your data
 - produce unsupervised morphological segmentations with [`fast_umorph`](https://github.com/vchahun/fast_umorph)
@@ -25,11 +25,13 @@ There is a good, if incomplete, ducttape tutorial [here](http://nschneid.github.
 
 The corpus used with `fast_umorph` to get unsupervised segmentations must be encoded in an **8-bit format** (e.g. ISO-8859-[1-15]). 
 
-The unsupervised morphological segmentations take three hyperparameters (`alpha_prefix`, `alpha_stem`, and `alpha_suffix`). We have found that `alpha_prefix, alpha_suffix << alpha_stem << 1` is necessary to produce useful segmentations. This encodes that there should be many more possible stems than there are inflectional affixes. The number of iterations necessary to produce good segmentations varies depending on the language. In general `alpha_prefix = alpha_suffix = 1e-6 , alpha_stem = 1e-4` at 1000 iterations is a good starting point. 
+The unsupervised morphological segmentations take three hyperparameters (`alpha_prefix`, `alpha_stem`, and `alpha_suffix`). We have found that `alpha_prefix, alpha_suffix << alpha_stem << 1` is necessary to produce useful segmentations. This encodes that there should be many more possible stems than there are inflectional affixes. The number of iterations necessary to produce good segmentations varies depending on the language. In general `alpha_prefix = alpha_suffix = 1e-6` , `alpha_stem = 1e-4` at 1000 iterations is a good starting point. 
 
 You can edit the ducttape file to specify your own segmentations. Simply define a global variable that points to your segmentations and replace all references to the output of the umorph task with your variable. You do not need to remove the task. It will not run if it is not required to reach the end goal of the plan.
-Format: token	prefix^prefix^&lt;stem&gt;^suffix^suffix
-        (e.g. тренинговой     <тренинг>^ов^ой)
+
+Format: 
+token &emsp; prefix^prefix^<stem>^suffix^suffix
+(e.g. тренинговой &emsp; <тренинг>^ов^ой)
 
 ### Supervised
 
