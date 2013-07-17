@@ -3,7 +3,7 @@ import argparse, logging
 import gzip, cPickle
 from itertools import izip
 from collections import namedtuple, Counter
-import config
+from config_files import config
 from common import read_sentences, read_sgm
 from models import load_models
 
@@ -33,8 +33,7 @@ def source_match(lhs, source):
         if all(x == y.token for x, y in zip(lhs, source[j:])):
             yield j
 
-lemma_re = re.compile('^(.+)_(['+config.EXTRACTED_TAGS+'])$')
-def synthetic_rule(rev_map, models, rule, source, match):
+def synthetic_rule(rev_map, models, rule, source, match, lemma_re):
     """Create inflected rule"""
     rule_features = Counter(rule.features)
     rule_features['Synthetic'] = 1
@@ -66,8 +65,8 @@ def synthetic_rule(rev_map, models, rule, source, match):
         rule_features['Category_'+category] += 1
         rule_features['InflectionScore'] += score
 
-    # FIXME Should we not create a rule if nothing is inflected?
-
+    # don't create a rule if nothing is inflected
+    if 'InflectionScore' not in rule_features: return
     assert len(inflected_rhs) == len(rule.rhs)
     yield Rule(rule.lhs, inflected_rhs, rule_features, rule.alignment)
 
@@ -92,6 +91,9 @@ def main():
 
     logging.info('Loading inflection prediction models')
     models = load_models(args.models)
+    extracted_tags = ''.join([cat for cat in models.keys()])
+    logging.info('Inflecting categories: {}'.format(extracted_tags))
+    lemma_re = re.compile('^(.+)_(['+''+extracted_tags+'])$')
 
     logging.info('Generating extended grammars')
     data = izip(read_sentences(sys.stdin, skip_empty=False),
@@ -112,7 +114,7 @@ def main():
             assert not any(src.startswith('[X,') for src in rule.lhs) # no gaps, please
             for match in source_match(rule.lhs, source):
                 # create (at most) a synthetic rule
-                for new_rule in synthetic_rule(rev_map, models, rule, source, match):
+                for new_rule in synthetic_rule(rev_map, models, rule, source, match, lemma_re):
                     grammar_file.write(unicode(new_rule).encode('utf8')+'\n')
 
         grammar_file.close()

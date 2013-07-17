@@ -3,13 +3,14 @@ import argparse
 import logging
 from collections import defaultdict, Counter
 import cPickle
-import config
+import config_files.config
 from common import read_sentences
 
 def main():
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser(description='Create reverse inflection map')
+    parser.add_argument('-t','--tags',default='W',help='tags to produce mappings for')
     parser.add_argument('rev_map', help='output file')
     args = parser.parse_args()
     
@@ -17,7 +18,7 @@ def main():
     logging.info('Finding inflections and counting tag/form occurences...')
     for _, target, _ in read_sentences(sys.stdin):
         for (inflection, lemma, tag) in target:
-            if tag[0] not in config.EXTRACTED_TAGS: continue
+            if tag[0] not in args.tags: continue
             lemma_map[lemma, tag[0]][tag[1:]][inflection] += 1
 
     logging.info('Selecting most frequent form for each tag')

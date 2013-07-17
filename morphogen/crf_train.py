@@ -2,7 +2,7 @@ import sys, os, io
 import uuid
 import argparse, logging
 import cPickle
-import config
+from config_files import config
 from common import read_sentences
 
 def extract_instances(category, source, target, alignment):

@@ -4,7 +4,7 @@ import cPickle
 import logging
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
-import config
+import config_files.config
 from common import read_sentences
 
 def extract_instances(category, source, target, alignment):

@@ -1,16 +1,16 @@
 import sys
 import argparse
 from common import read_sentences
-import config
 
 def main():
     parser = argparse.ArgumentParser(description='Create source ||| lemma_tag corpus')
     parser.add_argument('--partial', action='store_true',
             help='exclude non-predicted categories from lemmatization')
+    parser.add_argument('-t','--tags',default='W',help='tags to include if partial')
     args = parser.parse_args()
 
     def lemmatize(tgt, lemma, tag):
-        if args.partial and tag[0] not in config.EXTRACTED_TAGS:
+        if args.partial and tag[0] not in args.tags:
             return tgt
         return lemma+'_'+tag[0]
 

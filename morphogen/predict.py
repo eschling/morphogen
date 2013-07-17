@@ -3,14 +3,14 @@ import argparse
 import logging
 import cPickle
 import math
-import config
+import config_files.config
 from common import read_sentences
 from models import load_models
 
-def extract_instances(source, target, alignment):
+def extract_instances(source, target, alignment, tags):
     """Extract (category, features, tag) training instances for a sentence pair"""
     for j, (token, lemma, tag) in enumerate(target):
-        if tag[0] not in config.EXTRACTED_TAGS: continue
+        if tag[0] not in tags: continue
         word_alignments = [i for (i, k) in alignment if k == j] # src - tgt = j
         if len(word_alignments) != 1: continue # Extract only 1-n alignments
         (i,) = word_alignments # src
@@ -35,11 +35,12 @@ def main():
     logging.info('Loading inflection prediction models')
     models = load_models(args.models)
     logging.info('Loaded models for %d categories', len(models))
+    extract_tags = [cat for cat in models.keys()]
 
-    stats = {cat: [0, 0, 0, 0, 0] for cat in config.EXTRACTED_TAGS}
+    stats = {cat: [0, 0, 0, 0, 0] for cat in extract_tags}
 
     for source, target, alignment in read_sentences(sys.stdin):
-        for word, features in extract_instances(source, target, alignment):
+        for word, features in extract_instances(source, target, alignment, extract_tags):
             gold_inflection, lemma, tag = word
             category = tag[0]
             gold_tag = tag[1:]

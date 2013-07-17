@@ -3,7 +3,6 @@ import logging
 import numpy
 from sklearn.feature_extraction import DictVectorizer
 import structlearn
-import config
 
 class SimpleModel:
     def __init__(self, vectorizer, clf):
@@ -19,8 +18,9 @@ class SimpleModel:
         return [(score - z, tag, inflection) for score, tag, inflection in scored]
 
 class CRFModel:
-    def __init__(self, category, fn):
+    def __init__(self, category, fn, attribute_function):
         self.category = category
+        self.get_attributes = attribute_function
         self.weights = {}
         with gzip.open(fn) as f:
             for line in f:
@@ -29,7 +29,7 @@ class CRFModel:
 
     def score(self, tag, features):
         score = 0
-        for attr in config.get_attributes(self.category, tag):
+        for attr in self.get_attributes(self.category, tag):
             for fname, fval in features.iteritems():
                 score += fval * self.weights.get(attr+'_'+fname, 0)
         return score
@@ -41,10 +41,11 @@ class CRFModel:
         return [(score - z, tag, inflection) for score, tag, inflection in scored]
 
 class StructuredModel:
-    def __init__(self, category):
+    def __init__(self, category, attribute_function):
         self.category = category
         self.feature_dict = DictVectorizer()
         self.label_dict = DictVectorizer()
+        self.get_attributes = attribute_function
 
     def train(self, X, Y_all, Y_star, Y_lim, n_iter=10,
             alpha_sgd=0.1, every_iter=None):
@@ -70,7 +71,7 @@ class StructuredModel:
         X = self.feature_dict.transform([features])
         Y_all = []
         for i, (tag, _) in enumerate(inflections):
-            label = {attr: 1 for attr in config.get_attributes(self.category, tag)}
+            label = {attr: 1 for attr in self.get_attributes(self.category, tag)}
             Y_all.append(label)
         Y_all = self.label_dict.transform(Y_all)
 
