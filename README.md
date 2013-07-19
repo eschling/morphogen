@@ -25,7 +25,7 @@ The `- p basic` option says that we should run the workflow path `basic`. The `-
 
 There is a very good, if incomplete, ducttape tutorial [here](http://nschneid.github.io/ducttape-crash-course/tutorial.html)
 
-The corpus used with `fast_umorph` to get unsupervised segmentations must be encoded in an **8-bit format** (e.g. ISO-8859-[1-16]). 
+The corpus used with `fast_umorph` to get unsupervised segmentations must be encoded in an **8-bit format** (e.g. ISO-8859-[1-16]). If you're using our `unsupervised.tape`, this means you need to specify the correct 8-bit encoding for your target language in the global variables. The script will do the necessary conversions for you. 
 
 The unsupervised morphological segmentations take three hyperparameters (`alpha_prefix`, `alpha_stem`, and `alpha_suffix`). We have found that `alpha_prefix, alpha_suffix << alpha_stem << 1` is necessary to produce useful segmentations. This encodes that there should be many more possible stems than there are inflectional affixes. The number of iterations necessary to produce good segmentations varies depending on the language. In general `alpha_prefix = alpha_suffix = 1e-6` , `alpha_stem = 1e-4` at 1000 iterations is a good starting point. 
 
