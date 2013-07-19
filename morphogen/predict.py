@@ -3,7 +3,7 @@ import argparse
 import logging
 import cPickle
 import math
-import config_files.config
+import config_files.config as config
 from common import read_sentences
 from models import load_models
 

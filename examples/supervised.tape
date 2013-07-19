@@ -38,7 +38,7 @@ global {
     # email to send decoding results
     # this option can be removed from the mira.py call in the tune_mira
     # task if you would rather not receive an email when decoding has finished
-    email="eschling@cs.cmu.edu"
+    email=""
 
     tune_cores=10
     extract_gra_cores=10

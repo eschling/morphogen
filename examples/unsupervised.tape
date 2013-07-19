@@ -183,8 +183,8 @@ task merge_training
 
 # Reverse inflection map
 task reverse_map :: morphogen=@ :: mono=(Mono: no=false yes=true)
-< tgt=$out@process_tgt
-< monolingual=(Mono: no='' yes=$monolingual@process_mono)
+< tgt=$out@process_tgt[Mono:no]
+< monolingual=(Mono: no='' yes=$out@process_tgt[Mono:yes])
 > rev_map {
   if $mono ; then
     cat $tgt $monolingual | python $morphogen/morphogen/rev_map.py $rev_map
@@ -195,7 +195,7 @@ task reverse_map :: morphogen=@ :: mono=(Mono: no=false yes=true)
 
 # Train a structured inflection model using stochastic gradient descent
 task struct_train :: morphogen=@ 
-:: iter=10 
+:: iter=10
 < rev_map=@reverse_map
 < merged=$merged@merge_training
 > model {
@@ -244,7 +244,6 @@ task extract_gra : cdec
 # Synthetic grammar
 task synthetic_grammar :: morphogen=@
 :: iter=$iter@struct_train
-#:: kbest=(Kbest: one="" two="-k 2" four="-k 4" eight="-k 8")
 < rev_map=@reverse_map
 < inflection_model=$model@struct_train
 < corpus=(ExtractSection: dev=$merged@merge_empty[Section:dev]
@@ -288,7 +287,7 @@ task tune_mira : cdec
       --update-size 500 \
       --devset $dev_sgm \
       --output-dir ./mira \
-      -e $email \
+      #-e $email \
       -t $test_sgm \
       -c $cdec_ini
 }

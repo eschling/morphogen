@@ -3,6 +3,7 @@ global {
     dev=/usr0/home/cdyer/projects/target-morph/hebrew/en-he/dev.en-he
     train=/usr0/home/cdyer/projects/target-morph/hebrew/en-he/train.en-he
 
+    # available online at http://www.ark.cs.cmu.edu/cdyer/en-c600.gz
     en_clusters=/usr0/corpora/wmt13/brown_clusters/en-c600.gz
 
     # model and segmentations on which you want to evaluate the accuracy
@@ -10,7 +11,7 @@ global {
     analyses=/home/cdyer/projects/target-morph/hebrew/en-he/types.he.seg.1e-6_1e-3_1e-7
 
     morphogen=/home/eschling/tools/morphogen
-    turboparser=/home/eschling/tools/TurboParser-2.1.0
+    turboparser=/usr1/home/eschling/morph/hebrew/example/.packages/turboparser/452a4ecfd19d8af89de8d2ce420e21bab8d41577/
 
     ducttape_experimental_packages=true
 }
@@ -18,7 +19,7 @@ global {
 package cdec :: .versioner=disk .path=/home/eschling/cdec {}
 
 # EN ||| EN POS ||| EN dep ||| EN clusters
-task process_src : cdec :: turboparser=@ :: en_clusters=@
+task process_src : cdec :: turboparser=@ :: en_clusters=@ :: morphogen=@
 < corpus=(Section: train=@ dev=@)
 > out {
     paste <(cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $morphogen/scripts/turbotag.py $turboparser | $morphogen/scripts/turboparse.py -p $turboparser)\
