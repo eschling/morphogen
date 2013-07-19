@@ -9,7 +9,8 @@ import argparse
 parser = None
 def start_parser(parser_loc):
     turboparser = parser_loc+'/src/parser/TurboParser'
-    model_loc = parser_loc+'/models/sd_2_0_4_basic.model'
+    #model_loc = parser_loc+'/models/sd_2_0_4_basic.model'
+    model_loc = parser_loc+'/models/210full_sd204.model'
     global parser
     parser = sp.Popen([turboparser, '--test', '--file_model='+model_loc,
         '--file_test=/dev/stdin', '--file_prediction=/dev/stdout','--logtostderr'],

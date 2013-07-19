@@ -20,8 +20,6 @@ def main():
     parser.add_argument('-c', '--config', help='configuration module for supervised models (must be in config directory)')
     args = parser.parse_args()
 
-    logging.info('{}\n'.format(sys.argv))
-
     category = args.category
     logging.info('Training inflection model for category {}'.format(category))
 
@@ -35,6 +33,7 @@ def main():
     logging.info('Loading reverse inflection map')
     with open(args.rev_map) as f:
         rev_map = cPickle.load(f)
+    logging.info('length of reverse map: {}'.format(len(rev_map)))
 
     logging.info('Generating the training data')
     X = []

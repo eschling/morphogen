@@ -7,7 +7,7 @@ import config_files.config
 from common import read_sentences
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser(description='Create reverse inflection map')
     parser.add_argument('-t','--tags',default='W',help='tags to produce mappings for')
@@ -16,10 +16,15 @@ def main():
     
     lemma_map = defaultdict(lambda: defaultdict(Counter))
     logging.info('Finding inflections and counting tag/form occurences...')
-    for _, target, _ in read_sentences(sys.stdin):
-        for (inflection, lemma, tag) in target:
-            if tag[0] not in args.tags: continue
-            lemma_map[lemma, tag[0]][tag[1:]][inflection] += 1
+    for line in sys.stdin:
+      if not line.strip(): continue #skip empty lines
+      tgts, lemmas, tags = line.decode('utf8')[:-1].split(' ||| ')
+      if not lemmas.strip(): continue #skip empty analyses
+      target = zip(tgts.lower().split(), lemmas.lower().split(), tags.split())
+      for (inflection, lemma, tag) in target:
+          #logging.info('{} {} {}'.format(inflection, lemma, tag))
+          if tag[0] not in args.tags: continue
+          lemma_map[lemma, tag[0]][tag[1:]][inflection] += 1
 
     logging.info('Selecting most frequent form for each tag')
     rev_map = {lt: set() for lt in lemma_map.iterkeys()}
