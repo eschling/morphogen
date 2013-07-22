@@ -1,17 +1,17 @@
 # Workflow for performing intrinsic evaluation of inflection prediction model
 global {
-    dev=/usr0/home/cdyer/projects/target-morph/hebrew/en-he/dev.en-he
-    train=/usr0/home/cdyer/projects/target-morph/hebrew/en-he/train.en-he
+    dev=/usr0/home/cdyer/projects/target-morph/swahili-new/dev_and_test/dev.en-sw
+    train=/usr0/home/cdyer/projects/target-morph/swahili-new/all-train.en-sw
 
     # available online at http://www.ark.cs.cmu.edu/cdyer/en-c600.gz
     en_clusters=/usr0/corpora/wmt13/brown_clusters/en-c600.gz
 
     # model and segmentations on which you want to evaluate the accuracy
-    model="/home/eschling/morph/hebrew/original/struct_train/MorphParam.637+Morphogen.original/model/model.10.pickle"
-    analyses=/home/cdyer/projects/target-morph/hebrew/en-he/types.he.seg.1e-6_1e-3_1e-7
+    model="/usr1/home/eschling/morph/swahili-new/clean/struct_train/Baseline.baseline/model/model.10.pickle"
+    analyses=/home/cdyer/projects/target-morph/swahili-new/types.sw.seg.1e-6_1e-4_1e-6
 
     morphogen=/home/eschling/tools/morphogen
-    turboparser=/usr1/home/eschling/morph/hebrew/example/.packages/turboparser/452a4ecfd19d8af89de8d2ce420e21bab8d41577/
+    turboparser=/usr1/home/eschling/morph/swahilii-new/example/.packages/turboparser/452a4ecfd19d8af89de8d2ce420e21bab8d41577/
 
     ducttape_experimental_packages=true
 }
@@ -62,7 +62,7 @@ task align : cdec
 
 # EN ||| EN POS ||| EN dep ||| EN clusters ||| TGT ||| TGT stem ||| TGT tag ||| alignments
 task merge_training
-< src=$out@process_src[Section:dev]
+< src=$out@process_src[Section:train]
 < tgt=$out@process_tgt[Section:dev]
 < dev=@
 < alignments=@align 
@@ -72,9 +72,9 @@ task merge_training
 
 # Reverse inflection map
 task reverse_map :: morphogen=@
-< merged=@merge_training
+< tgt=$out@process_tgt[Section:dev]
 > rev_map {
-    cat $merged | python $morphogen/morphogen/rev_map.py $rev_map
+    cat $tgt | python $morphogen/morphogen/rev_map.py $rev_map
 }
 
 task predict :: morphogen=@ :: ambig=(Ambiguous: no='' yes='--ambiguous') 
@@ -85,7 +85,7 @@ task predict :: morphogen=@ :: ambig=(Ambiguous: no='' yes='--ambiguous')
   cat $corpus | python $morphogen/morphogen/predict.py $rev_map $model $ambig > out
 }
 
-plan param {
+plan eval {
   reach predict via (Ambiguous: *)
 }
 
