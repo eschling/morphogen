@@ -62,7 +62,7 @@ task align : cdec
 
 # EN ||| EN POS ||| EN dep ||| EN clusters ||| TGT ||| TGT stem ||| TGT tag ||| alignments
 task merge_training
-< src=$out@process_src[Section:train]
+< src=$out@process_src[Section:dev]
 < tgt=$out@process_tgt[Section:dev]
 < dev=@
 < alignments=@align 
