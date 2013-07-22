@@ -11,7 +11,7 @@ The tagging and parsing could theoretically be done with any tool. Morphogen onl
 
 ### Unsupervised
 
-A [`ducttape`](https://github.com/jhclark/ducttape) workflow is provided in the examples folder. If you replace the dev, test, and train variables with paths to your data sets (in ` SRC ||| TGT ` bitext format), point the morphogen global variable at your clone of morphogen, specify a type file for unsupervised segmentations, and run `ducttape workflow.tape -p basic -O unsup` it will:
+A [`ducttape`](https://github.com/jhclark/ducttape) workflow is provided in the examples folder. If you replace the dev, test, and train variables with paths to your data sets (in ` SRC ||| TGT ` bitext format), point the morphogen global variable at your clone of morphogen, specify the 8-bit encoding for your target language, and run `ducttape workflow.tape -p basic -O unsup` it will:
 - clone all of the necessary external tools to your machine
 - preprocess your data
 - produce unsupervised morphological segmentations with [`fast_umorph`](https://github.com/vchahun/fast_umorph)(this can take time, depending on the number of iterations)
