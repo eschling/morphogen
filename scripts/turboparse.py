@@ -7,10 +7,11 @@ import multiprocessing as mp
 import argparse
 
 parser = None
-def start_parser(parser_loc):
+def start_parser(parser_loc, model_loc):
     turboparser = parser_loc+'/src/parser/TurboParser'
     #model_loc = parser_loc+'/models/sd_2_0_4_basic.model'
-    model_loc = parser_loc+'/models/210full_sd204.model'
+    if not model_loc:
+      model_loc = parser_loc+'/models/210full_sd204.model'
     global parser
     parser = sp.Popen([turboparser, '--test', '--file_model='+model_loc,
         '--file_test=/dev/stdin', '--file_prediction=/dev/stdout','--logtostderr'],
@@ -39,15 +40,16 @@ def parse(line):
 
 def main():
     arg_parser = argparse.ArgumentParser(description='Parse tagged sentences using TurboParser')
-    arg_parser.add_argument('-p','--parser',help='location of TurboParser')
+    arg_parser.add_argument('-p','--parser',help='location of TurboParser directory')
     arg_parser.add_argument('-j', '--jobs', type=int, default=1,
             help='number of instances of the parser to start')
     arg_parser.add_argument('-c', '--chunk', type=int, default=100,
             help='data chunk size')
+    arg_parser.add_argument('-m','--model', help='Model to use. Defaults to TurboParser-2.1.0/models/210full_sd204.model')
     args = arg_parser.parse_args()
 
     os.environ['LD_LIBRARY_PATH'] = args.parser+'/deps/local/lib'
-    pool = mp.Pool(processes=args.jobs, initializer=start_parser(args.parser))
+    pool = mp.Pool(processes=args.jobs, initializer=start_parser(args.parser, args.model))
 
     for sentence, tagged, parsed in pool.imap(parse, sys.stdin, chunksize=args.chunk):
         print('{} ||| {} ||| {}'.format(sentence, tagged, parsed))

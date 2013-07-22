@@ -24,11 +24,13 @@ global {
     morphogen=/home/eschling/tools/morphogen/
 
     # optional class based language model and log probability emission map
-    # (select with branch point KLM)
+    # (select with branch point ClassLM)
     classlm=/usr1/home/wammar/monolingual/plain-ru/all-wmt-mono.class.order7.wbdiscount.ken-binary
     emission_map=/home/wammar/russian-mt-blitz-2013/to-victor/ru-c600.emission-logprobs
     
     # Target language model - all language models must be in KenLM format
+    # use branch point KLM to indicate whether you are using your own
+    # target lm or making one from the training data.
     klm="/usr1/home/vchahune/wmt13.en-ru/data/news+nc+yandex+cleancrawl.ru.4.klm"
     # If you do not want to provide a target language model, one will be 
     # created from the training data and any monolingual data provided
@@ -36,7 +38,7 @@ global {
     lm_order=4
 
     # email to send decoding results
-    # this option can be removed from the mira.py call in the tune_mira
+    # this option can be added/removed from the mira.py call in the tune_mira
     # task if you would rather not receive an email when decoding has finished
     email=""
 
@@ -88,11 +90,12 @@ task process_src : cdec : turboparser
 < corpus=(Section: train=$train dev=$dev test=$test)
 > out {
   export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$turboparser/deps/local/lib:"
-  paste <(cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $morphogen/scripts/turbotag.py $turboparser |\
-  $morphogen/scripts/turboparse.py -p $turboparser)\
-  <(cat $corpus | $cdec/corpus/cut-corpus.pl 1 |\  
-  $cdec/corpus/lowercase.pl | $morphogen/scripts/to-cluster.py $en_clusters) |\
-  sed 's/       / ||| /g' > $out
+  (cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $morphogen/scripts/turbotag.py $turboparser |\
+  $morphogen/scripts/turboparse.py -p $turboparser) > parsed
+  cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $cdec/corpus/lowercase.pl |\
+  $morphogen/scripts/to-cluster.py $en_clusters > cluster
+  paste parsed cluster | sed 's/	/ ||| /g' > $out
+  rm parsed cluster
 }
 
 # TGT ||| TGT stem ||| TGT tag
@@ -137,7 +140,7 @@ task merge_training
 # produce inflected forms that do no appear anywhere in the training data.
 task reverse_map :: morphogen=$morphogen :: tags=$tags
 :: mono=(Mono: no=false yes=true)
-< tgt=out@process_tgt
+< tgt=$out@process_tgt
 < monolingual=(Mono: no="" yes=$monolingual)
 > rev_map {
   if $mono ; then
@@ -282,9 +285,13 @@ task tune_mira : cdec
       --metric-scale 1 \
       --devset $dev_sgm \
       --output-dir ./mira \
-      -e $email \
+      # -e $email \
       -t $test_sgm \
       -c $cdec_ini
+}
+
+plan test {
+  reach merge_empty via (Section: test)
 }
 
 plan basic {
