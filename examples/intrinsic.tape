@@ -1,33 +1,38 @@
 # Workflow for performing intrinsic evaluation of inflection prediction model
 global {
-    dev=/usr0/home/cdyer/projects/target-morph/swahili-new/dev_and_test/dev.en-sw
-    train=/usr0/home/cdyer/projects/target-morph/swahili-new/all-train.en-sw
+    dev=/usr0/home/cdyer/projects/target-morph/hebrew/en-he/dev.en-he
+    train=/usr0/home/cdyer/projects/target-morph/hebrew/en-he/train.en-he
 
     # available online at http://www.ark.cs.cmu.edu/cdyer/en-c600.gz
     en_clusters=/usr0/corpora/wmt13/brown_clusters/en-c600.gz
 
     # model and segmentations on which you want to evaluate the accuracy
-    model="/usr1/home/eschling/morph/swahili-new/example/struct_train/Baseline.baseline/model/model.10.pickle"
-    analyses=/home/cdyer/projects/target-morph/swahili-new/types.sw.seg.1e-6_1e-4_1e-6
+    model="/home/eschling/morph/hebrew/original/struct_train/MorphParam.637+Morphogen.original/model/model.10.pickle"
+    analyses=/home/cdyer/projects/target-morph/hebrew/en-he/types.he.seg.1e-6_1e-3_1e-7
 
     morphogen=/home/eschling/tools/morphogen
 
     # location of turboparser (point to download from previous workflow)
-    # (you could also add turboparser as a package here and have ducttape get the repository again)
-    turboparser=/usr1/home/eschling/morph/swahilii-new/example/.packages/turboparser/452a4ecfd19d8af89de8d2ce420e21bab8d41577/
+    # (you could also add turboparser as a package here and have ducttape get the repository again, or point it to a local disk version)
+    turboparser=/usr1/home/eschling/morph/swahili-new/example/.packages/turboparser/452a4ecfd19d8af89de8d2ce420e21bab8d41577
 
     ducttape_experimental_packages=true
 }
 
+# Location of cdec. Again, this can be switched to a git clone, which it will download for you, or set to point to a previously downloaded package from another workflow, as shown above for TurboParser
 package cdec :: .versioner=disk .path=/home/eschling/cdec {}
 
 # EN ||| EN POS ||| EN dep ||| EN clusters
 task process_src : cdec :: turboparser=@ :: en_clusters=@ :: morphogen=@
 < corpus=(Section: train=@ dev=@)
-> out {
-    paste <(cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $morphogen/scripts/turbotag.py $turboparser | $morphogen/scripts/turboparse.py -p $turboparser)\
-    <(cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $cdec/corpus/lowercase.pl | $morphogen/scripts/to-cluster.py $en_clusters) |\
-    sed 's/	/ ||| /g' > $out
+> out { 
+  export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$turboparser/deps/local/lib:"
+  (cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $morphogen/scripts/turbotag.py $turboparser |\
+  $morphogen/scripts/turboparse.py -p $turboparser) > parsed
+  cat $corpus | $cdec/corpus/cut-corpus.pl 1 | $cdec/corpus/lowercase.pl |\
+  $morphogen/scripts/to-cluster.py $en_clusters > cluster
+  paste parsed cluster | sed 's/	/ ||| /g' > $out
+  rm parsed cluster
 }
 
 # TGT ||| TGT stem ||| TGT tag
