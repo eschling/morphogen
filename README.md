@@ -5,6 +5,8 @@ While the morphogen code itself is not dependent on anything external, it is int
 
 If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed on your machine.
 
+Example workflows for using morphogen are provided using [`ducttape`](https://github.com/jhclark/ducttape). You must have Scala installed and in your path to use this tool. If you have ducttape and morphogen installed, the ducttape workflows will install all of the other necessary dependencies for you. 
+
 The tagging and parsing could theoretically be done with any tool. Morphogen only requires that the dependency parses are in the Stanford dependency format.
 
 ## Running
@@ -21,7 +23,7 @@ A [`ducttape`](https://github.com/jhclark/ducttape) workflow is provided in the 
 - tune your augmented system using MIRA
 - evaluate your system on the given test set
 
-The `- p basic` option says that we should run the workflow path `basic`. The `-O` option specifies the output directory for the workflow.
+The `-p basic` option says that we should run the workflow path `basic`. The `-O` option specifies the output directory for the workflow.
 
 There is a very good, if incomplete, ducttape tutorial [here](http://nschneid.github.io/ducttape-crash-course/tutorial.html)
 
