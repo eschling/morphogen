@@ -285,9 +285,9 @@ task tune_mira : cdec
       --metric-scale 1 \
       --devset $dev_sgm \
       --output-dir ./mira \
-      # -e $email \
       -t $test_sgm \
-      -c $cdec_ini
+      -c $cdec_ini \
+      #-e #email
 }
 
 plan test {

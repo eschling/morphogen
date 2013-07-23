@@ -41,7 +41,7 @@ global {
     # Email address to send decoding results
     # (you can remove this option from the mira call in task tune_mira
     # if you would rather not get an email every time it finishes evaluating)
-    email="eschling@cs.cmu.edu"
+    email=""
 
     ducttape_experimental_packages=true
 }
@@ -287,9 +287,9 @@ task tune_mira : cdec
       --update-size 500 \
       --devset $dev_sgm \
       --output-dir ./mira \
-      #-e $email \
       -t $test_sgm \
-      -c $cdec_ini
+      -c $cdec_ini \
+      #-e $email
 }
 
 plan basic {
