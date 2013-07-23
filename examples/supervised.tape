@@ -61,7 +61,7 @@ package turboparser :: .versioner=git .repo="https://github.com/andre-martins/Tu
   export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd;`/deps/local/lib:"
   mkdir models
   cd models
-  wget http://www.ark.cs.cmu.edu/TurboParser/sd_models/210full_sd204.tar.gz
+  wget http://www.ark.cs.cmu.edu/TurboParser/sd_models/210basic_sd204.tar.gz
   wget http://www.ark.cs.cmu.edu/TurboParser/sample_models/english_proj_tagger.tar.gz
   for i in *.tar.gz; do tar xvfz $i; done
   rm *.tar.gz

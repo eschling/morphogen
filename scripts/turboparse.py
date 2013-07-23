@@ -9,9 +9,9 @@ import argparse
 parser = None
 def start_parser(parser_loc, model_loc):
     turboparser = parser_loc+'/src/parser/TurboParser'
-    #model_loc = parser_loc+'/models/sd_2_0_4_basic.model'
     if not model_loc:
-      model_loc = parser_loc+'/models/210full_sd204.model'
+      #model_loc = parser_loc+'/models/210full_sd204.model'
+      model_loc = parser_loc+'/models/210basic_sd204.model'
     global parser
     parser = sp.Popen([turboparser, '--test', '--file_model='+model_loc,
         '--file_test=/dev/stdin', '--file_prediction=/dev/stdout','--logtostderr'],
@@ -45,7 +45,7 @@ def main():
             help='number of instances of the parser to start')
     arg_parser.add_argument('-c', '--chunk', type=int, default=100,
             help='data chunk size')
-    arg_parser.add_argument('-m','--model', help='Model to use. Defaults to TurboParser-2.1.0/models/210full_sd204.model')
+    arg_parser.add_argument('-m','--model', help='Model to use. Defaults to TurboParser-2.1.0/models/210basic_sd204.model')
     args = arg_parser.parse_args()
 
     os.environ['LD_LIBRARY_PATH'] = args.parser+'/deps/local/lib'
