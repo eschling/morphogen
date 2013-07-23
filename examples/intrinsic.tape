@@ -7,8 +7,14 @@ global {
     en_clusters=/usr0/corpora/wmt13/brown_clusters/en-c600.gz
 
     # model and segmentations on which you want to evaluate the accuracy
-    model="/home/eschling/morph/hebrew/original/struct_train/MorphParam.637+Morphogen.original/model/model.10.pickle"
-    analyses=/home/cdyer/projects/target-morph/hebrew/en-he/types.he.seg.1e-6_1e-3_1e-7
+    # e.g. /home/eschling/morph/swahili/example/Baseline.baseline/model/model.10.pickle
+    model=""
+    # unsupervised segmentations (for processing target side)
+    # e.g. /home/cdyer/projects/target-morph/hebrew/en-he/types.he.seg.1e-6_1e-3_1e-7
+    # if you are evaluating supervised models, you will need to provide the
+    # dev and test data preprocessed on the target side
+    # (you can just change the following tasks to take this as input wherever you see $out@process_tgt[Section:dev])
+    analyses=""
 
     morphogen=/home/eschling/tools/morphogen
 
