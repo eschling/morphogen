@@ -1,0 +1,1 @@
+from csgd import StructuredClassifier
