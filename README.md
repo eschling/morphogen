@@ -9,6 +9,8 @@ Example workflows for using morphogen are provided using [`ducttape`](https://gi
 
 The tagging and parsing could theoretically be done with any tool. Morphogen only requires that the dependency parses are in the Stanford dependency format.
 
+The training of the model is done by default with stochastic gradient descent implemented in [Cython](cython.org). There is an implementation of SGD in standard python in morphogen/structlearn/sgd.py that can be used instead, but it takes longer to train the inflection models using this implementation. 
+
 ## Running
 
 ### Unsupervised
