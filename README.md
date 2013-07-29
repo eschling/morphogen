@@ -1,6 +1,9 @@
 `morphogen` is a tool for improving machine translation into morphologically rich languages. It uses source context to predict inflections, and uses these inflection models to create augmented grammars that can be used with a standard decoder.
 
 ## Dependencies
+
+We provide ducttape scripts for running morphogen. If you are using these scripts, ducttape will download all of the other external dependencies for you.
+
 While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [`cdec`](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and [600 Brown clusters](http://www.ark.cs.cmu.edu/cdyer/en-c600.gz) produced from large amounts of monolingual English data. These are all publically available. 
 
 If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed on your machine.
