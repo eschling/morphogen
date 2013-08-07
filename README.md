@@ -54,7 +54,7 @@ You MUST provide a Python configuration file which defines a function `get_attri
 
 ### Both
 
-If you don't specifiy a target language model, a 4-gram language model will be created as a part of the ducttape workflow. We recommend also creating a class based target language model and using this in addition to the standard target language model. All language models must be in the KenLM format for use with cdec
+If you don't specifiy a target language model, a 4-gram language model will be created as a part of the ducttape workflow. We recommend also creating a class based target language model and using this in addition to the standard target language model. Our class based language models were created from 600 brown clusters trained on monolingual data and smoothed with Witten-Bell. All language models must be in the KenLM format for use with cdec
 
 We also provide a ducttape script for intrinsic evaluation of inflection models. This preprocesses the given development data in the same manner as the training data and evaluates our hypothesized inflections against the actual inflections. It's more of a sanity check than anything else.
 
