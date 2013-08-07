@@ -22,10 +22,10 @@ def main():
       if not lemmas.strip(): continue #skip empty analyses
       target = zip(tgts.lower().split(), lemmas.lower().split(), tags.split())
       for (inflection, lemma, tag) in target:
-          #logging.info('{} {} {}'.format(inflection, lemma, tag))
           if tag[0] not in args.tags: continue
           lemma_map[lemma, tag[0]][tag[1:]][inflection] += 1
 
+    # if multiple target words map to the same tag (relevant to supervised analyses only), choose the most frequent one
     logging.info('Selecting most frequent form for each tag')
     rev_map = {lt: set() for lt in lemma_map.iterkeys()}
     for lt, inflections in lemma_map.iteritems():
