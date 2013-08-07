@@ -1,11 +1,16 @@
 '''Example configuration file, for use with a positional tagset for Russian.
 For example, a Russian word might be tagged as mis-sfm-e 
-(main+indicative+past+singular+feminine+medial+perfective)
+(the morphosyntactic description of the features, which is equivalent to 
+main+indicative+past+singular+feminine+medial+perfective)
 
-All configuration files must contain get_attributes, which specifies how to name features based on the target language preprocessing. They must be present in this configuration directory
+All configuration files must contain get_attributes, which specifies how to name features based on the target language preprocessed morphological analysis. 
+This function takes a category and a tag (the output of the morphological analyzer for a given word) and yields a list of features.
+The features returned by the function are used to define the target morphological feature vectors. 
+Configuration files must be present in this configuration directory.
 
 You can train a model with this configuration by running (assuming corpus is a training set in the format:
- SRC ||| SRC tag ||| SRC deps ||| TGT ||| TGT lemma ||| TGT tag ||| alignments
+ SRC ||| SRC tag ||| SRC deps ||| TGT ||| TGT lemma ||| TGT tag ||| alignments, and rev_map is the output from rev_map.py)
+ 
 
 by running (for verbs, for example)
 cat corpus | python struct_train.py -r 0.01 -i 10 -c russian_config V rev_map model
