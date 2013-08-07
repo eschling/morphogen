@@ -2,13 +2,11 @@
 
 ## Dependencies
 
-We provide ducttape scripts for running morphogen. If you are using these scripts, ducttape will download all of the other external dependencies for you.
+Example workflows for using morphogen are provided using [ducttape](https://github.com/jhclark/ducttape). You must have Scala installed and in your path to use this tool. If you have ducttape and morphogen installed, the ducttape workflows will install all of the other necessary dependencies for you. 
 
-While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [`cdec`](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and [600 Brown clusters](http://www.ark.cs.cmu.edu/cdyer/en-c600.gz) produced from large amounts of monolingual English data. These are all publically available. 
+While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [cdec](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and [600 Brown clusters](http://www.ark.cs.cmu.edu/cdyer/en-c600.gz) produced from large amounts of monolingual English data. These are all publically available. 
 
-If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed on your machine.
-
-Example workflows for using morphogen are provided using [`ducttape`](https://github.com/jhclark/ducttape). You must have Scala installed and in your path to use this tool. If you have ducttape and morphogen installed, the ducttape workflows will install all of the other necessary dependencies for you. 
+If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed and in your path.
 
 The tagging and parsing could theoretically be done with any tool. Morphogen only requires that the dependency parses are in the Stanford dependency format.
 
@@ -52,11 +50,11 @@ Format: ` SRC ||| TGT ||| TGT stem ||| TGT tag `
 Similarly, any monolingual data must be preprocessed.
 Format: ` TGT ||| TGT stem ||| TGT tag `
         
-You MUST provide a Python configuration file which defines a function `get_attributes(category, attributes)`, which yields a list of features given the category and morphological inflection of a word. This file must be placed in the folder `morphogen/config_files/`. Since this function depends on the format produced by your supervised morphological analyzer, you must define it yourself. This will be used when training the inflection model to create features that can be evaluated qualitatively. There is an example configuration for a Russian positional tagset in `morphogen/config_files/russian_config.py`.
+You MUST provide a Python configuration file which defines a function `get_attributes(category, attributes)`, which yields a list of features given the category and morphological analysis of a word. This file must be placed in the folder `morphogen/config_files/`. Since this function depends on the format produced by your supervised morphological analyzer, you must define it yourself. This will be used when training the inflection model to create sparse vectors of target inflectional features. There is an example function for a Russian positional tagset in `morphogen/config_files/russian_config.py`.
 
 ### Both
 
-If you don't specifiy a target language model, a 4-gram language model will be created as a part of the ducttape workflow. We recommend also creating a class based target language model and using this in addition to the standard target language model. All language models must be in the KenLM format for use with `cdec`
+If you don't specifiy a target language model, a 4-gram language model will be created as a part of the ducttape workflow. We recommend also creating a class based target language model and using this in addition to the standard target language model. All language models must be in the KenLM format for use with cdec
 
 We also provide a ducttape script for intrinsic evaluation of inflection models. This preprocesses the given development data in the same manner as the training data and evaluates our hypothesized inflections against the actual inflections. It's more of a sanity check than anything else.
 
