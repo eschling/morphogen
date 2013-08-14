@@ -29,8 +29,8 @@ global {
 
     # Class based target language model and log probability emission map 
     # (for relating words to their cluster)
-    classlm=/usr0/home/eschling/morph/swahili-new/classlm.6gram.sw.klm
-    emission_map=/usr0/home/eschling/morph/swahili-new/sw-c600-emission-map.gz
+    classlm=""
+    emission_map=""
 
     # Number of cores to use when:
     # - tuning with MIRA and decoding 
