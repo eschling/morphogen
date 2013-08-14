@@ -114,15 +114,6 @@ task umorph : cdec : fast_umorph :: morphogen=@
   rm temp
 }
 
-task test_tag : cdec : turboparser :: morphogen=@
-< dev=$dev
-> tag
-> parse {
-  export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$turboparser/deps/local/lib:"
-  cat $dev | $cdec/corpus/cut-corpus.pl 1 | $morphogen/scripts/turbotag.py $turboparser > tag
-  cat tag | $morphogen/scripts/turboparse.py -p $turboparser > parse
-}
-
 # EN ||| EN POS ||| EN dep ||| EN clusters
 task process_src : cdec : turboparser :: morphogen=@ :: en_clusters=@
 < corpus=(Section: train=$train dev=$dev test=$test)
