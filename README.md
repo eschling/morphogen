@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-Example workflows for using morphogen are provided using [ducttape](https://github.com/jhclark/ducttape). You must have Scala installed and in your path to use this tool. If you have ducttape and morphogen installed, the ducttape workflows will install all of the other necessary dependencies for you. 
+Example workflows for using morphogen are provided using [ducttape](https://github.com/jhclark/ducttape). If you have ducttape and morphogen installed, the ducttape workflows will install all of the other necessary dependencies for you. 
 
 While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [cdec](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and [600 Brown clusters](http://www.ark.cs.cmu.edu/cdyer/en-c600.gz) produced from large amounts of monolingual English data. These are all publically available. 
 
