@@ -60,7 +60,7 @@ We also provide a ducttape script for intrinsic evaluation of inflection models.
 
 To inspect the feature weights learned by a given model, use `python show_model.py model > model.features`
 
-
+## License
 
 Copyright © 2013 Victor Chahuneau, Eva Schlinger
 
