@@ -48,7 +48,7 @@ class StructuredModel:
         self.get_attributes = attribute_function
 
     def train(self, X, Y_all, Y_star, Y_lim, n_iter=10,
-            alpha_sgd=0.1, every_iter=None):
+            alpha_sgd=0.1, every_iter=None, adagrad=False):
         logging.info('Converting into matrices')
         X = self.feature_dict.fit_transform(X)
         logging.info('X: %d x %d', *X.shape)
@@ -65,7 +65,7 @@ class StructuredModel:
             every_iter2 = lambda it, model: every_iter(it, self)
         else:
             every_iter2 = every_iter
-        self.model.fit(X, Y_all, Y_star, Y_lim, every_iter=every_iter2)
+        self.model.fit(X, Y_all, Y_star, Y_lim, every_iter=every_iter2, Adagrad=adagrad)
 
     def score_all(self, inflections, features):
         X = self.feature_dict.transform([features])

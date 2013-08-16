@@ -18,6 +18,7 @@ def main():
     parser.add_argument('-i', '--n_iter', type=int, help='number of SGD iterations')
     parser.add_argument('-r', '--rate', type=float, help='SGD udpate rate')
     parser.add_argument('-c', '--config', help='configuration module for supervised models (must be in config directory)')
+    parser.add_argument('-a','--adagrad', action='store_true', default=False, help='Use the AdaGrad adaptive gradient technique to adjust rate')
     args = parser.parse_args()
 
     category = args.category
@@ -81,7 +82,7 @@ def main():
     else:
       model = StructuredModel(args.category, config.get_attributes)
     model.train(X, Y_all, Y_star, Y_lim, n_iter=args.n_iter,
-            alpha_sgd=args.rate, every_iter=save_model)
+            alpha_sgd=args.rate, every_iter=save_model, adagrad=args.adagrad)
 
 if __name__ == '__main__':
     main()
