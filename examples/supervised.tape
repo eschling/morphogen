@@ -275,6 +275,7 @@ task tune_mira : cdec
     < test_sgm=(Method: baseline=$sgm@extract_gra[ExtractSection:test,Corpus:original]
                         synthetic=$sgm@synthetic_grammar[ExtractSection:test])
     > weights=mira/weights.final {
+    export PYTHONPATH=`echo $cdec/python/build/lib.*`
     $cdec/training/mira/mira.py \
       --max-iterations 20 \
       --optimizer 2 \
