@@ -4,6 +4,18 @@ from collections import namedtuple
 
 AnnotatedToken = namedtuple('AnnotatedToken', 'token, pos, parent, dependency, cluster')
 
+def extract_instances(category, source, target, alignment):
+    """Extract (category, features, tag) training instances for a sentence pair"""
+    for j, (token, lemma, tag) in enumerate(target):
+        if tag[0] != category: continue
+        word_alignments = [i for (i, k) in alignment if k == j] # src - tgt == j
+        if len(word_alignments) != 1: continue # Extract only 1-n alignments
+        (i,) = word_alignments # src
+        features = dict((fname, fval) for ff in config.FEATURES
+                for fname, fval in ff(source, lemma, i))
+        yield (token, lemma, tag), features
+
+
 def read_sentences(stream, skip_empty=True):
     """Read annotated sentences in the format:
     EN ||| EN POS ||| EN dep ||| EN clus ||| RU ||| RU lemma ||| RU tag ||| EN-RU alignment"""

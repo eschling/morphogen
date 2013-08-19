@@ -5,7 +5,7 @@ import cPickle
 import config_files.config as config
 import functools
 from common import read_sentences
-from crf_train import extract_instances
+from common import extract_instances
 from models import StructuredModel
 
 def main():
