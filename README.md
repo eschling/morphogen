@@ -6,7 +6,7 @@ Example workflows for using morphogen are provided using [ducttape](https://gith
 
 While the morphogen code itself is not dependent on anything external, it is intended to be used with a number of external tools. Specifically, it is used to extend the per-sentence grammars created by [cdec](http://www.cdec-decoder.org). The inflection model depends on having good source side information, in the form of dependency parsing, part-of-speech tagging, and word clustering. We do these using [TurboParser](http://www.ark.cs.cmu.edu/TurboParser/), TurboTagger, and [600 Brown clusters](http://www.ark.cs.cmu.edu/cdyer/en-c600.gz) produced from large amounts of monolingual English data. These are all publically available. 
 
-If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed and in your path.
+If no morphological segmentations are given, we use [`fast_umorph`](https://github.com/vchahun/fast_umorph) to get unsupervised morphological segmentations. This requires the [OpenFST library](http://www.openfst.org/) to be installed and in your path. The Makefile for `fast_umorph` assumes g++ 4.7. There is also a known issue with compiling and OpenFST (more info [here](https://github.com/vchahun/fast_umorph/issues/1))
 
 The tagging and parsing could theoretically be done with any tool. Morphogen only requires that the dependency parses are in the Stanford dependency format.
 
@@ -16,7 +16,7 @@ The tagging and parsing could theoretically be done with any tool. Morphogen onl
 
 ### Unsupervised
 
-A [`ducttape`](https://github.com/jhclark/ducttape) workflow is provided in the examples folder. If you replace the dev, test, and train variables with paths to your data sets (in ` SRC ||| TGT ` bitext format), point the morphogen global variable at your clone of morphogen, specify the 8-bit encoding for your target language, and run `ducttape workflow.tape -p basic -O unsup` it will:
+A [`ducttape`](https://github.com/jhclark/ducttape) workflow (unsupervised.tape) is provided in the examples folder. If you replace the dev, test, and train variables in unsupervised.tape with paths to your data sets (in ` SRC ||| TGT ` bitext format), point the morphogen global variable at your clone of morphogen, specify the 8-bit encoding for your target language, and run `ducttape unsupervised.tape -p basic -O unsup` it will:
 - clone all of the necessary external tools to your machine
 - preprocess your data
 - produce unsupervised morphological segmentations with [`fast_umorph`](https://github.com/vchahun/fast_umorph)(this can take time, depending on the number of iterations)
