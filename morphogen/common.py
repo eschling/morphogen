@@ -1,6 +1,7 @@
 import logging
 import re
 from collections import namedtuple
+from config_files import config
 
 AnnotatedToken = namedtuple('AnnotatedToken', 'token, pos, parent, dependency, cluster')
 

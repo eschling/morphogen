@@ -20,8 +20,9 @@ cdef _add(numpy.ndarray[numpy.float64_t, ndim=2] w, float u,
 
 @cython.boundscheck(False)
 cdef _add_grad(numpy.ndarray[numpy.float64_t, ndim=2] w, 
-        float u, float alpha, 
+        float g, float alpha, float l1_lambda, int t,
         numpy.ndarray[numpy.float64_t, ndim=2] adagrad,
+        numpy.ndarray[numpy.float64_t, ndim=2] u,
         numpy.ndarray[numpy.int32_t, ndim=1] a_indices,
         numpy.ndarray[numpy.float64_t, ndim=1] a_data,
         numpy.ndarray[numpy.int32_t, ndim=1] b_indices,
@@ -31,10 +32,16 @@ cdef _add_grad(numpy.ndarray[numpy.float64_t, ndim=2] w,
         a_i = a_indices[i]
         for j in range(b_indices.shape[0]):
             b_j = b_indices[j]
-            adagrad[a_i, b_j] = adagrad[a_i, b_j] + (u*a_data[i]*b_data[j])**2
+            grad = g * a_data[i] * b_data[j]
+            adagrad[a_i, b_j] = adagrad[a_i, b_j] + grad**2
+            u[a_i, b_j] = u[a_i, b_j] + grad
             if adagrad[a_i, b_j] == 0: continue
-
-            w[a_i, b_j] = w[a_i, b_j] + (alpha/math.sqrt(adagrad[a_i, b_j])) * u * a_data[i] * b_data[j]
+            if not l1_lambda: 
+              w[a_i, b_j] = w[a_i, b_j] + (alpha/math.sqrt(adagrad[a_i, b_j])) * grad
+            else:
+              z = abs(u[a_i, b_j])/t - l1_lambda
+              s = 1 if u[a_i, b_j]>0 else -1
+              w[a_i, b_j] = ((alpha*t)/math.sqrt(adagrad[a_i, b_j])) * s * z if z>0 else 0
 
 
 @cython.boundscheck(False)
@@ -57,7 +64,7 @@ class StructuredClassifier:
         self.n_iter = n_iter
         self.alpha_sgd = alpha_sgd
 
-    def fit(self, X, Y_all, Y_star, Y_lim=None, every_iter=None, Adagrad=False):
+    def fit(self, X, Y_all, Y_star, Y_lim=None, every_iter=None, Adagrad=False, l1_lambda=None):
         """
         X : CSR matrix (n_instances x n_features)
         Y_all : CSR matrix (n_outputs x n_labels)
@@ -74,8 +81,11 @@ class StructuredClassifier:
 
         self.weights = numpy.zeros((n_features, n_labels), dtype=numpy.float)
         self.y_weights = numpy.zeros((n_labels, n_labels), dtype=numpy.float)
+
         if Adagrad:
-          self.adagrad = [numpy.zeros((self.weights.shape)), numpy.zeros(self.y_weights.shape)]
+          adagrad = [numpy.zeros(self.weights.shape), numpy.zeros(self.y_weights.shape)]
+          u = [numpy.zeros(self.weights.shape), numpy.zeros(self.y_weights.shape)]
+
         mod100 = max(1, n_instances/90)
         mod10 = max(1, n_instances/9)
 
@@ -96,14 +106,14 @@ class StructuredClassifier:
                 probs = numpy.exp(log_probs)
                 # - grad(loss) = + grad(LL) = x_star - sum_x(p(x) x)
                 for y_i, y in enumerate(Y_x):
-                    u = (int(y_i == y_star) - probs[y_i])
-                    if u == 0: continue
+                    grad = (int(y_i == y_star) - probs[y_i])
+                    if grad == 0: continue
                     if Adagrad:
-                      _add_grad(self.weights, u, self.alpha_sgd, self.adagrad[0], x.indices, x.data, y.indices, y.data)
-                      _add_grad(self.y_weights, u, self.alpha_sgd, self.adagrad[1], y.indices, y.data, y.indices, y.data)
+                      _add_grad(self.weights, grad, self.alpha_sgd, l1_lambda, it+1, adagrad[0], u[0], x.indices, x.data, y.indices, y.data)
+                      _add_grad(self.y_weights, grad, self.alpha_sgd, l1_lambda, it+1, adagrad[1], u[1], y.indices, y.data, y.indices, y.data)
                     else:
-                        _add(self.weights, u*self.alpha_sgd, x.indices, x.data, y.indices, y.data)
-                        _add(self.y_weights, u*self.alpha_sgd, y.indices, y.data, y.indices, y.data)
+                      _add(self.weights, grad*self.alpha_sgd, x.indices, x.data, y.indices, y.data)
+                      _add(self.y_weights, grad*self.alpha_sgd, y.indices, y.data, y.indices, y.data)
 
             sys.stderr.write('\n')
             logging.info('LL=%.3f ppl=%.3f', ll, math.exp(-ll/n_instances))
@@ -119,7 +129,7 @@ class StructuredClassifier:
             y = Y_x[i]
             # x.T * W[xy] * y + y.T * W[yy] * y
             v = (_dot(self.weights, x.indices, x.data, y.indices, y.data)
-                    + _dot(self.y_weights, y.indices, y.data, y.indices, y.data))
+                + _dot(self.y_weights, y.indices, y.data, y.indices, y.data))
             z = (v if i == 0 else numpy.logaddexp(z, v)) # partition function
             potentials[i] = v
         return potentials - z
