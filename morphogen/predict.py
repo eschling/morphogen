@@ -24,7 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description='Predict using trained models')
     parser.add_argument('rev_map', help='reverse inflection map')
     parser.add_argument('models', nargs='+', help='trained models (category:file)')
-    parser.add_argument('--ambiguous', action='store_true',
+    parser.add_argument('-a','--ambiguous', action='store_true',
             help='evaluate only lemmas with multiple inflections')
     args = parser.parse_args()
 
@@ -78,8 +78,8 @@ def main():
         accuracy = n_correct/float(n_instances)
         ppl = math.exp(-total_log_prob/n_instances)
         avg_inflections = n_inflections/float(n_instances)
-        print('Category {}: MRR={:.3f} acc={:.1%} ppl={:.2f} ({} instances; avg #infl={:.2f})'.format(
-            category, mrr, accuracy, ppl, n_instances, avg_inflections))
+        print('Category {}: MRR={:.3f} acc={:.1%} ppl={:.2f} ll={} ({} instances; avg #infl={:.2f})'.format(
+            category, mrr, accuracy, ppl, total_log_prob, n_instances, avg_inflections))
 
 if __name__ == '__main__':
     main()

@@ -5,7 +5,7 @@ import cPickle
 import config_files.config as config
 import functools
 from common import read_sentences
-from crf_train import extract_instances
+from common import extract_instances
 from models import StructuredModel
 
 def main():
@@ -18,6 +18,8 @@ def main():
     parser.add_argument('-i', '--n_iter', type=int, help='number of SGD iterations')
     parser.add_argument('-r', '--rate', type=float, help='SGD udpate rate')
     parser.add_argument('-c', '--config', help='configuration module for supervised models (must be in config directory)')
+    parser.add_argument('-a','--adagrad', action='store_true', default=False, help='Use the AdaGrad adaptive gradient technique to adjust rate')
+    parser.add_argument('-l','--l1', type=float, help='lambda value for l1 regualrization (l1 regularization currently only implemented for use with adagrad). If none given, regularization will not be used')
     args = parser.parse_args()
 
     category = args.category
@@ -81,7 +83,8 @@ def main():
     else:
       model = StructuredModel(args.category, config.get_attributes)
     model.train(X, Y_all, Y_star, Y_lim, n_iter=args.n_iter,
-            alpha_sgd=args.rate, every_iter=save_model)
+                alpha_sgd=args.rate, every_iter=save_model, 
+                adagrad=args.adagrad, l1=args.l1)
 
 if __name__ == '__main__':
     main()

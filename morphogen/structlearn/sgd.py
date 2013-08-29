@@ -3,11 +3,24 @@ import sys
 import math
 import numpy
 
-def _add(w, u, a, b): # w += u * a.T b
+def _add(w, u, a, b, alpha, adagrad=None, average=None, l1=0): #w += u*a.T b
     if a.nnz == 0 or b.nnz == 0: return
     for i, a_i in enumerate(a.indices):
         for j, b_j in enumerate(b.indices):
-            w[a_i, b_j] += u * a.data[i] * b.data[j]
+            if not adagrad:
+              w[a_i, b_j] += alpha * u * a.data[i] * b.data[j]
+            else:
+              grad = u * a.data[i] * b.data[j]
+              adagrad[a_i, b_j] += grad**2
+              average[a_i, b_j] += grad
+              if adagrad[a_i, b_j] == 0: continue
+              if not l1:
+                w[a_i, b_j] += (alpha/math.sqrt(adagrad[a_i, b_j])) * grad
+              else:
+                z = abs(average[a_i, b_j])/t - l1
+                #maximizing likelihood rather than minimizing log loss
+                s = 1 if u[a_i, b_j]>0 else -1
+                w[a_i, b_j] = ((alpha*t)/math.sqrt(adagrad[a_i, b_j])) * s * z if z>0 else 0
 
 def _dot(w, a, b): # w.dot(a.T b)
     if a.nnz == 0 or b.nnz == 0: return 0
@@ -20,7 +33,7 @@ class StructuredClassifier:
         self.n_iter = n_iter
         self.alpha_sgd = alpha_sgd
 
-    def fit(self, X, Y_all, Y_star, Y_lim=None, every_iter=None):
+    def fit(self, X, Y_all, Y_star, Y_lim=None, every_iter=None, Adagrad=False, l1_lambda=None):
         """
         X : CSR matrix (n_instances x n_features)
         Y_all : CSR matrix (n_outputs x n_labels)
@@ -37,6 +50,10 @@ class StructuredClassifier:
 
         self.weights = numpy.zeros((n_features, n_labels))
         self.y_weights = numpy.zeros((n_labels, n_labels))
+        
+        if Adagrad:
+          adagrad = [numpy.zeros(self.weights.shape), numpy.zeros(self.y_weights.shape)]
+          average = [numpy.zeros(self.weights.shape), numpy.zeros(self.y_weights.shape)]
 
         mod100 = max(1, n_instances/90)
         mod10 = max(1, n_instances/9)
@@ -58,10 +75,16 @@ class StructuredClassifier:
                 probs = numpy.exp(log_probs)
                 # - grad(loss) = + grad(LL) = x_star - sum_x(p(x) x)
                 for y_i, y in enumerate(Y_x):
-                    u = self.alpha_sgd * (int(y_i == y_star) - probs[y_i])
+                    u = (int(y_i == y_star) - probs[y_i])
                     if u == 0: continue
-                    _add(self.weights, u, x, y)
-                    _add(self.y_weights, u, y, y)
+                    if Adagrad:
+                      _add(self.weights, u, x, y, self.alpha_sgd,
+                           adagrad=adagrad, average=average, l1=l1_lambda)
+                      _add(self.y_weights, u, y, y, self.alpha_sgd,
+                           adagrad=adagrad, average=average, l1=l1_lambda)
+                    else:
+                      _add(self.weights, u, x, y, self.alpha_sgd)
+                      _add(self.y_weights, u, y, y, self.alpha_sgd)
             sys.stderr.write('\n')
             logging.info('LL=%.3f ppl=%.3f', ll, math.exp(-ll/n_instances))
             if every_iter:
