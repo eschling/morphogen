@@ -18,8 +18,9 @@ global {
     # must be preprocessed in the same manner as the training data
     # Format: TGT ||| TGT lemma ||| TGT tag
     monolingual=""
-    
-    en_clusters=/usr0/corpora/wmt13/brown_clusters/en-c600.gz
+
+    # available from http://www.ark.cs.cmu.edu/cdyer/en-c600.gz    
+    en_clusters=""
     
     morphogen=/home/eschling/tools/morphogen/
 
@@ -38,7 +39,7 @@ global {
     lm_order=4
 
     # email to send decoding results
-    # this option can be added/removed from the mira.py call in the tune_mira
+    # this option can be added to/removed from the mira.py call in the tune_mira
     # task if you would rather not receive an email when decoding has finished
     email=""
 
@@ -137,7 +138,8 @@ task merge_training
 
 # Reverse inflection map
 # Monolingual data is optional. This will allow for the model to possibly
-# produce inflected forms that do no appear anywhere in the training data.
+# produce inflected forms that do no appear anywhere in the training data,
+# but it can also make training significantly slower.
 task reverse_map :: morphogen=$morphogen :: tags=$tags
 :: mono=(Mono: no=false yes=true)
 < tgt=$out@process_tgt
