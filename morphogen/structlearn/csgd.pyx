@@ -43,7 +43,6 @@ cdef _add_grad(numpy.ndarray[numpy.float64_t, ndim=2] w,
               s = 1 if u[a_i, b_j]>0 else -1
               w[a_i, b_j] = ((alpha*t)/math.sqrt(adagrad[a_i, b_j])) * s * z if z>0 else 0
 
-
 @cython.boundscheck(False)
 cdef _dot(numpy.ndarray[numpy.float64_t, ndim=2] w,
         numpy.ndarray[numpy.int32_t, ndim=1] a_indices,
@@ -64,7 +63,7 @@ class StructuredClassifier:
         self.n_iter = n_iter
         self.alpha_sgd = alpha_sgd
 
-    def fit(self, X, Y_all, Y_star, Y_lim=None, every_iter=None, Adagrad=False, l1_lambda=None):
+    def fit(self, X, Y_all, Y_star, Y_lim=None, every_iter=None, Adagrad=False, l1_lambda=0.0):
         """
         X : CSR matrix (n_instances x n_features)
         Y_all : CSR matrix (n_outputs x n_labels)

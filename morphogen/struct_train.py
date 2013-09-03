@@ -19,7 +19,7 @@ def main():
     parser.add_argument('-r', '--rate', type=float, help='SGD udpate rate')
     parser.add_argument('-c', '--config', help='configuration module for supervised models (must be in config directory)')
     parser.add_argument('-a','--adagrad', action='store_true', default=False, help='Use the AdaGrad adaptive gradient technique to adjust rate')
-    parser.add_argument('-l','--l1', type=float, help='lambda value for l1 regualrization (l1 regularization currently only implemented for use with adagrad). If none given, regularization will not be used')
+    parser.add_argument('-l','--l1', type=float, default=0.0 , help='lambda value for l1 regualrization (l1 regularization currently only implemented for use with adagrad). If none given, regularization will not be used')
     args = parser.parse_args()
 
     category = args.category

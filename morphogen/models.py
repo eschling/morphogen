@@ -48,7 +48,7 @@ class StructuredModel:
         self.get_attributes = attribute_function
 
     def train(self, X, Y_all, Y_star, Y_lim, n_iter=10, alpha_sgd=0.1, 
-             every_iter=None, adagrad=False, l1=None):
+             every_iter=None, adagrad=False, l1=0.0):
         logging.info('Converting into matrices')
         X = self.feature_dict.fit_transform(X)
         logging.info('X: %d x %d', *X.shape)
