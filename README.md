@@ -47,6 +47,8 @@ token &emsp; prefix^prefix^&lt;stem&gt;^suffix^suffix
 We also provide a ducttape workflow for supervised models, and an example configuration file for a Russian positional tagset. If you will be training a supervised model, all of the target side preprocessing must be done by you. 
 Format: ` SRC ||| TGT ||| TGT stem ||| TGT tag `
 
+`struct_train.py` assumes that the first letter of the tag is the word category, but this can be easily modified.
+
 Similarly, any monolingual data must be preprocessed.
 Format: ` TGT ||| TGT stem ||| TGT tag `
         
