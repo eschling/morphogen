@@ -3,11 +3,11 @@ import sys
 import math
 import numpy
 
-def _add(w, u, a, b, alpha, adagrad=None, average=None, l1=0): #w += u*a.T b
+def _add(w, u, a, b, alpha, adagrad=None, average=None, l1=0, t=None): #w += u*a.T b
     if a.nnz == 0 or b.nnz == 0: return
     for i, a_i in enumerate(a.indices):
         for j, b_j in enumerate(b.indices):
-            if not adagrad:
+            if adagrad is None:
               w[a_i, b_j] += alpha * u * a.data[i] * b.data[j]
             else:
               grad = u * a.data[i] * b.data[j]
@@ -19,7 +19,7 @@ def _add(w, u, a, b, alpha, adagrad=None, average=None, l1=0): #w += u*a.T b
               else:
                 z = abs(average[a_i, b_j])/t - l1
                 #maximizing likelihood rather than minimizing log loss
-                s = 1 if u[a_i, b_j]>0 else -1
+                s = 1 if average[a_i, b_j]>0 else -1
                 w[a_i, b_j] = ((alpha*t)/math.sqrt(adagrad[a_i, b_j])) * s * z if z>0 else 0
 
 def _dot(w, a, b): # w.dot(a.T b)
@@ -79,9 +79,9 @@ class StructuredClassifier:
                     if u == 0: continue
                     if Adagrad:
                       _add(self.weights, u, x, y, self.alpha_sgd,
-                           adagrad=adagrad, average=average, l1=l1_lambda)
+                           adagrad=adagrad[0], average=average[0], l1=l1_lambda, t=it+1)
                       _add(self.y_weights, u, y, y, self.alpha_sgd,
-                           adagrad=adagrad, average=average, l1=l1_lambda)
+                           adagrad=adagrad[1], average=average[1], l1=l1_lambda, t=it+1)
                     else:
                       _add(self.weights, u, x, y, self.alpha_sgd)
                       _add(self.y_weights, u, y, y, self.alpha_sgd)

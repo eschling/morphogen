@@ -92,7 +92,7 @@ class StructuredClassifier:
             logging.info('Iteration %d/%d (rate=%s)', (it+1), self.n_iter, self.alpha_sgd)
             ll = 0
             for i in xrange(n_instances):
-                if i % mod10 == 0: sys.stderr.write('| ll:{}'.format(ll))
+                if i % mod10 == 0: sys.stderr.write('|')
                 elif i % mod100 == 0: sys.stderr.write('.')
                 f, t = (Y_lim[i] if Y_lim is not None else (0, n_outputs)) # output limits
                 Y_x = Y_all[f:t] # all compatible outputs
