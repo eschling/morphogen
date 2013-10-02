@@ -1,6 +1,6 @@
 `morphogen` is a tool for improving machine translation into morphologically rich languages. It uses source context to predict inflections, and uses these inflection models to create augmented grammars that can be used with a standard decoder.
 
-A paper describing this tool, which appeared in the Prague Bulletin of Mathematical Linguistics, can be found [here](http://ufal.mff.cuni.cz/pbml/100/art-schlinger-chahuneau-dyer.pdf). This work and [fast_umorph](http://github.com/vchaun/fast_umorph) will also be presented at EMNLP 2013.
+A paper describing this tool, which appeared in the Prague Bulletin of Mathematical Linguistics, can be found [here](http://ufal.mff.cuni.cz/pbml/100/art-schlinger-chahuneau-dyer.pdf). This work and [fast_umorph](http://github.com/vchahun/fast_umorph) will also be presented at EMNLP 2013.
 
 ## Dependencies
 
