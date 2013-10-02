@@ -1,5 +1,7 @@
 `morphogen` is a tool for improving machine translation into morphologically rich languages. It uses source context to predict inflections, and uses these inflection models to create augmented grammars that can be used with a standard decoder.
 
+A paper describing this tool, which appeared in the Prague Bulletin of Mathematical Linguistics, can be found [here](http://ufal.mff.cuni.cz/pbml/100/art-schlinger-chahuneau-dyer.pdf). This work and [fast_umorph](http://github.com/vchaun/fast_umorph) will also be presented at EMNLP 2013.
+
 ## Dependencies
 
 Example workflows for using morphogen are provided using [ducttape](https://github.com/jhclark/ducttape). If you have ducttape and morphogen installed, the ducttape workflows will install all of the external programs for you. However, this assumes that you have the dependencies for the external tools already installed on your system (e.g. Boost for cdec, OpenFST for fast_umorph, etc.). While we try to make this process as painless as possible, we cannot anticipate all problems with external tools.
@@ -61,6 +63,10 @@ If you don't specifiy a target language model, a 4-gram language model will be c
 We also provide a ducttape script for intrinsic evaluation of inflection models. This preprocesses the given development data in the same manner as the training data and evaluates our hypothesized inflections against the actual inflections. It's more of a sanity check than anything else.
 
 To inspect the feature weights learned by a given model, use `python show_model.py model > model.features`
+
+## Current Work
+
+An implementation of [Adagrad](http://www.cs.berkeley.edu/~jduchi/projects/DuchiHaSi10.pdf) (with or without L1 regularization) has been added but is not fully tested (use at your own risk). 
 
 ## License
 
